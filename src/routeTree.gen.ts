@@ -47,6 +47,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  IntelligenceRoute: typeof IntelligenceRoute
 }
 
 declare module '@tanstack/react-router' {
