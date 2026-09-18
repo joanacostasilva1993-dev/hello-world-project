@@ -8,6 +8,11 @@ import {
   getYouTubeVideoSnapshot,
 } from "./youtube.server";
 
+const channelInputSchema = z.object({
+  channelId: z.string().min(6).max(40),
+  limit: z.number().int().min(1).max(24).default(12),
+});
+
 export const analyzeYouTubeChannelByHandle = createServerFn({ method: "POST" })
   .validator(
     z.object({
@@ -22,17 +27,13 @@ export const analyzeYouTubeChannelByHandle = createServerFn({ method: "POST" })
   });
 
 export const analyzeYouTubeChannel = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      channelId: z.string().min(6).max(40),
-      limit: z.number().int().min(1).max(24).default(12),
-    }),
-  )
+  .validator(channelInputSchema)
   .handler(async ({ data }) => {
     const [channel, videos] = await Promise.all([
       getYouTubeChannelSnapshot(data.channelId),
       getYouTubeChannelVideos(data.channelId, data.limit),
     ]);
+
     return { channel, videos };
   });
 
