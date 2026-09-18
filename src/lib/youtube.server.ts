@@ -27,6 +27,13 @@ export type YouTubeChannelSnapshot = {
   thumbnail?: string;
 };
 
+export type YouTubeChannelVideo = {
+  id: string;
+  title: string;
+  publishedAt: string;
+  thumbnail?: string;
+};
+
 const API_URL = "https://www.googleapis.com/youtube/v3";
 
 function getApiKey() {
