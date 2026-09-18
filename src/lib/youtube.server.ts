@@ -34,28 +34,70 @@ export type YouTubeChannelVideo = {
   thumbnail?: string;
 };
 
+type YouTubeApiItem = {
+  id?: string | { videoId?: string };
+  snippet?: {
+    title?: string;
+    description?: string;
+    channelId?: string;
+    channelTitle?: string;
+    publishedAt?: string;
+    categoryId?: string;
+    tags?: string[];
+    thumbnails?: {
+      high?: { url?: string };
+      medium?: { url?: string };
+      default?: { url?: string };
+    };
+  };
+  contentDetails?: { duration?: string };
+  statistics?: {
+    viewCount?: string;
+    likeCount?: string;
+    commentCount?: string;
+    subscriberCount?: string;
+    videoCount?: string;
+  };
+};
+
+type YouTubeApiResponse = {
+  items?: YouTubeApiItem[];
+};
+
 const API_URL = "https://www.googleapis.com/youtube/v3";
 
-function getApiKey() {
+function getApiKey(): string | undefined {
   return process.env.YOUTUBE_API_KEY;
 }
 
-async function youtubeRequest(path: string, params: Record<string, string>) {
+async function youtubeRequest(
+  path: string,
+  params: Record<string, string>,
+): Promise<YouTubeApiResponse> {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("YOUTUBE_API_KEY não está configurada no servidor.");
+  if (!apiKey) {
+    throw new Error("YOUTUBE_API_KEY não está configurada no servidor.");
+  }
 
   const query = new URLSearchParams({ ...params, key: apiKey });
   const response = await fetch(API_URL + "/" + path + "?" + query.toString());
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`YouTube Data API respondeu ${response.status}: ${detail.slice(0, 400)}`);
+    throw new Error(
+      "YouTube Data API respondeu " +
+        response.status +
+        ": " +
+        detail.slice(0, 400),
+    );
   }
 
-  return response.json() as Promise<any>;
+  return (await response.json()) as YouTubeApiResponse;
 }
 
-export async function getYouTubeVideoSnapshot(videoId: string): Promise<YouTubeVideoSnapshot> {
+export async function getYouTubeVideoSnapshot(
+  videoId: string,
+): Promise<YouTubeVideoSnapshot> {
   const data = await youtubeRequest("videos", {
     part: "snippet,contentDetails,statistics",
     id: videoId,
@@ -63,7 +105,9 @@ export async function getYouTubeVideoSnapshot(videoId: string): Promise<YouTubeV
   });
 
   const item = data.items?.[0];
-  if (!item) throw new Error("Vídeo não encontrado ou indisponível.");
+  if (!item || typeof item.id !== "string") {
+    throw new Error("Vídeo não encontrado ou indisponível.");
+  }
 
   return {
     kind: "video",
@@ -79,13 +123,19 @@ export async function getYouTubeVideoSnapshot(videoId: string): Promise<YouTubeV
     viewCount: toNumber(item.statistics?.viewCount),
     likeCount: toNumber(item.statistics?.likeCount),
     commentCount: toNumber(item.statistics?.commentCount),
-    thumbnail: item.snippet?.thumbnails?.high?.url ?? item.snippet?.thumbnails?.default?.url,
+    thumbnail:
+      item.snippet?.thumbnails?.high?.url ??
+      item.snippet?.thumbnails?.default?.url,
   };
 }
 
-export async function getYouTubeChannelByHandle(handle: string): Promise<YouTubeChannelSnapshot> {
+export async function getYouTubeChannelByHandle(
+  handle: string,
+): Promise<YouTubeChannelSnapshot> {
   const normalized = handle.replace(/^@/, "").trim();
-  if (!normalized) throw new Error("Handle do canal inválido.");
+  if (!normalized) {
+    throw new Error("Handle do canal inválido.");
+  }
 
   const data = await youtubeRequest("channels", {
     part: "snippet,statistics",
@@ -93,31 +143,28 @@ export async function getYouTubeChannelByHandle(handle: string): Promise<YouTube
     maxResults: "1",
   });
 
-  const item = data.items?.[0];
-  if (!item) throw new Error("Canal não encontrado para este handle.");
-
-  return {
-    kind: "channel",
-    id: item.id,
-    title: item.snippet?.title ?? "",
-    description: item.snippet?.description ?? "",
-    publishedAt: item.snippet?.publishedAt ?? "",
-    subscriberCount: toNumber(item.statistics?.subscriberCount),
-    videoCount: toNumber(item.statistics?.videoCount),
-    viewCount: toNumber(item.statistics?.viewCount),
-    thumbnail: item.snippet?.thumbnails?.high?.url ?? item.snippet?.thumbnails?.default?.url,
-  };
+  return channelFromItem(data.items?.[0], "Canal não encontrado para este handle.");
 }
 
-export async function getYouTubeChannelSnapshot(channelId: string): Promise<YouTubeChannelSnapshot> {
+export async function getYouTubeChannelSnapshot(
+  channelId: string,
+): Promise<YouTubeChannelSnapshot> {
   const data = await youtubeRequest("channels", {
     part: "snippet,statistics",
     id: channelId,
     maxResults: "1",
   });
 
-  const item = data.items?.[0];
-  if (!item) throw new Error("Canal não encontrado ou indisponível.");
+  return channelFromItem(data.items?.[0], "Canal não encontrado ou indisponível.");
+}
+
+function channelFromItem(
+  item: YouTubeApiItem | undefined,
+  errorMessage: string,
+): YouTubeChannelSnapshot {
+  if (!item || typeof item.id !== "string") {
+    throw new Error(errorMessage);
+  }
 
   return {
     kind: "channel",
@@ -128,31 +175,50 @@ export async function getYouTubeChannelSnapshot(channelId: string): Promise<YouT
     subscriberCount: toNumber(item.statistics?.subscriberCount),
     videoCount: toNumber(item.statistics?.videoCount),
     viewCount: toNumber(item.statistics?.viewCount),
-    thumbnail: item.snippet?.thumbnails?.high?.url ?? item.snippet?.thumbnails?.default?.url,
+    thumbnail:
+      item.snippet?.thumbnails?.high?.url ??
+      item.snippet?.thumbnails?.default?.url,
   };
 }
 
-export async function getYouTubeChannelVideos(channelId: string, limit = 12): Promise<YouTubeChannelVideo[]> {
+export async function getYouTubeChannelVideos(
+  channelId: string,
+  limit = 12,
+): Promise<YouTubeChannelVideo[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), 50);
+
   const searchData = await youtubeRequest("search", {
     part: "snippet",
     channelId,
     type: "video",
     order: "date",
-    maxResults: String(Math.min(Math.max(limit, 1), 50)),
+    maxResults: String(safeLimit),
   });
 
   return (searchData.items ?? [])
-    .map((item: any) => ({
-      id: item.id?.videoId,
-      title: item.snippet?.title ?? "",
-      publishedAt: item.snippet?.publishedAt ?? "",
-      thumbnail: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url,
-    }))
-    .filter((item: YouTubeChannelVideo) => Boolean(item.id));
+    .map((item) => {
+      const id =
+        typeof item.id === "object" && item.id !== null
+          ? item.id.videoId
+          : undefined;
+
+      return {
+        id: id ?? "",
+        title: item.snippet?.title ?? "",
+        publishedAt: item.snippet?.publishedAt ?? "",
+        thumbnail:
+          item.snippet?.thumbnails?.medium?.url ??
+          item.snippet?.thumbnails?.default?.url,
+      };
+    })
+    .filter((item): item is YouTubeChannelVideo => Boolean(item.id));
 }
 
-function toNumber(value: unknown) {
-  if (typeof value !== "string" && typeof value !== "number") return undefined;
+function toNumber(value: unknown): number | undefined {
+  if (typeof value !== "string" && typeof value !== "number") {
+    return undefined;
+  }
+
   const number = Number(value);
   return Number.isFinite(number) ? number : undefined;
 }
