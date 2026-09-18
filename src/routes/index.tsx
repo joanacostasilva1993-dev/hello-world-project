@@ -174,8 +174,8 @@ function Index() {
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Insira um vídeo ou canal. Esta camada prepara a estrutura para extrair hook, promessa, narrativa, sinais visuais e padrões de retenção.</p>
                 </div>
                 <div className="flex rounded-xl border border-border bg-muted/40 p-1">
-                  <button onClick={() => setAnalysisMode("video")} className={\`rounded-lg px-3 py-2 text-xs font-bold \${analysisMode === "video" ? "bg-background shadow-sm" : "text-muted-foreground"}\`}>Vídeo</button>
-                  <button onClick={() => setAnalysisMode("channel")} className={\`rounded-lg px-3 py-2 text-xs font-bold \${analysisMode === "channel" ? "bg-background shadow-sm" : "text-muted-foreground"}\`}>Canal</button>
+                  <button onClick={() => setAnalysisMode("video")} className={`rounded-lg px-3 py-2 text-xs font-bold ${analysisMode === "video" ? "bg-background shadow-sm" : "text-muted-foreground"}`}>Vídeo</button>
+                  <button onClick={() => setAnalysisMode("channel")} className={`rounded-lg px-3 py-2 text-xs font-bold ${analysisMode === "channel" ? "bg-background shadow-sm" : "text-muted-foreground"}`}>Canal</button>
                 </div>
               </div>
               <div className="mt-5 flex flex-col gap-2 sm:flex-row">
