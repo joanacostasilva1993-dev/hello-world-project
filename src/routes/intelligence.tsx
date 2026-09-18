@@ -238,7 +238,11 @@ function DnaCard({ title, icon: Icon, items }: { title: string; icon: typeof Tar
   return <div className="rounded-3xl border border-border bg-card p-5"><div className="flex items-center gap-2"><Icon className="size-5 text-primary" /><h2 className="font-black">{title}</h2></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{items.map((item) => <div key={item} className="flex items-center gap-2 rounded-xl bg-muted/25 px-3 py-3 text-xs font-semibold text-muted-foreground"><CheckCircle2 className="size-4 text-primary/60" />{item}</div>)}</div></div>;
 }
 
-function formatNumber(value: unknown) {\n  return typeof value === "number" ? new Intl.NumberFormat("pt-PT").format(value) : "—";\n}\n\nfunction DnaValue({ label, value }: { label: string; value: unknown }) {
+function formatNumber(value: unknown) {
+  return typeof value === "number" ? new Intl.NumberFormat("pt-PT").format(value) : "—";
+}
+
+function DnaValue({ label, value }: { label: string; value: unknown }) {
   return <div className="rounded-xl border border-border bg-background p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 text-xs leading-5">{typeof value === "string" ? value : "—"}</p></div>;
 }
 
