@@ -76,6 +76,32 @@ export async function getYouTubeVideoSnapshot(videoId: string): Promise<YouTubeV
   };
 }
 
+export async function getYouTubeChannelByHandle(handle: string): Promise<YouTubeChannelSnapshot> {
+  const normalized = handle.replace(/^@/, "").trim();
+  if (!normalized) throw new Error("Handle do canal inválido.");
+
+  const data = await youtubeRequest("channels", {
+    part: "snippet,statistics",
+    forHandle: normalized,
+    maxResults: "1",
+  });
+
+  const item = data.items?.[0];
+  if (!item) throw new Error("Canal não encontrado para este handle.");
+
+  return {
+    kind: "channel",
+    id: item.id,
+    title: item.snippet?.title ?? "",
+    description: item.snippet?.description ?? "",
+    publishedAt: item.snippet?.publishedAt ?? "",
+    subscriberCount: toNumber(item.statistics?.subscriberCount),
+    videoCount: toNumber(item.statistics?.videoCount),
+    viewCount: toNumber(item.statistics?.viewCount),
+    thumbnail: item.snippet?.thumbnails?.high?.url ?? item.snippet?.thumbnails?.default?.url,
+  };
+}
+
 export async function getYouTubeChannelSnapshot(channelId: string): Promise<YouTubeChannelSnapshot> {
   const data = await youtubeRequest("channels", {
     part: "snippet,statistics",
