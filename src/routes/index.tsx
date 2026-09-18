@@ -46,6 +46,9 @@ const references = [
 
 function Index() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [referenceUrl, setReferenceUrl] = useState("");
+  const [analysisMode, setAnalysisMode] = useState<"video" | "channel">("video");
+  const [analyzed, setAnalyzed] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -113,7 +116,7 @@ function Index() {
                 <span className="hidden rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground sm:inline-flex">
                   Engine: <strong className="ml-1 text-foreground">Ready</strong>
                 </span>
-                <button className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm">
+                <button onClick={() => document.getElementById("intelligence")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm">
                   <Sparkles className="size-4" />
                   Nova análise
                 </button>
@@ -163,6 +166,44 @@ function Index() {
               </div>
             </section>
 
+            <section id="intelligence" className="rounded-3xl border border-primary/20 bg-card p-5 sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Step 2 · Intelligence Engine</p>
+                  <h3 className="mt-1 text-xl font-black">Transforme uma referência em Content DNA.</h3>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Insira um vídeo ou canal. Esta camada prepara a estrutura para extrair hook, promessa, narrativa, sinais visuais e padrões de retenção.</p>
+                </div>
+                <div className="flex rounded-xl border border-border bg-muted/40 p-1">
+                  <button onClick={() => setAnalysisMode("video")} className={\`rounded-lg px-3 py-2 text-xs font-bold \${analysisMode === "video" ? "bg-background shadow-sm" : "text-muted-foreground"}\`}>Vídeo</button>
+                  <button onClick={() => setAnalysisMode("channel")} className={\`rounded-lg px-3 py-2 text-xs font-bold \${analysisMode === "channel" ? "bg-background shadow-sm" : "text-muted-foreground"}\`}>Canal</button>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                <div className="relative flex-1">
+                  <Youtube className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <input value={referenceUrl} onChange={(e) => setReferenceUrl(e.target.value)} placeholder={analysisMode === "video" ? "Cole a URL de um vídeo do YouTube..." : "Cole a URL de um canal do YouTube..."} className="h-11 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                </div>
+                <button onClick={() => setAnalyzed(Boolean(referenceUrl.trim()))} disabled={!referenceUrl.trim()} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
+                  <BrainCircuit className="size-4" />
+                  Analisar referência
+                </button>
+              </div>
+              {analyzed ? (
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <InsightCard label="Hook" value="Detectado" detail="Promessa / curiosidade" />
+                  <InsightCard label="Estrutura" value="Mapeada" detail="Abertura → desenvolvimento → payoff" />
+                  <InsightCard label="Visual DNA" value="Pendente" detail="Extração multimodal" />
+                  <InsightCard label="Retenção" value="Pendente" detail="Dados reais do vídeo" />
+                </div>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-center">
+                  <BrainCircuit className="mx-auto size-6 text-muted-foreground" />
+                  <p className="mt-2 text-sm font-semibold">Nenhuma referência analisada</p>
+                  <p className="mt-1 text-xs text-muted-foreground">O resultado será a base para gerar oportunidades, hooks e roteiros.</p>
+                </div>
+              )}
+            </section>
+
             <section className="grid gap-4 md:grid-cols-3">
               <MetricCard icon={BrainCircuit} label="Intelligence" value="Ready" detail="Motor de análise preparado" />
               <MetricCard icon={Youtube} label="References" value="0" detail="Adicione o primeiro vídeo ou canal" />
@@ -176,7 +217,7 @@ function Index() {
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reference Intelligence</p>
                     <h3 className="mt-1 text-lg font-black">Radar de referências</h3>
                   </div>
-                  <button className="text-xs font-bold text-primary">Ver tudo</button>
+                  <button onClick={() => document.getElementById("intelligence")?.scrollIntoView({ behavior: "smooth" })} className="text-xs font-bold text-primary">Nova análise</button>
                 </div>
                 <div className="divide-y divide-border">
                   {references.map((reference) => (
@@ -246,6 +287,16 @@ function MetricCard({ icon: Icon, label, value, detail }: { icon: typeof Gauge; 
       </div>
       <p className="mt-5 text-2xl font-black">{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function InsightCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-background p-4">
+      <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span><span className="size-1.5 rounded-full bg-primary" /></div>
+      <p className="mt-3 text-sm font-black">{value}</p>
+      <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{detail}</p>
     </div>
   );
 }
