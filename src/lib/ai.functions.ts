@@ -5,6 +5,18 @@ import { getOpenRouterStatus, runOpenRouter, type AIRoute } from "./ai.server";
 
 const routeSchema = z.enum(["fast", "balanced", "quality"]);
 
+const snapshotSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  channelTitle: z.string(),
+  publishedAt: z.string(),
+  duration: z.string().optional(),
+  tags: z.array(z.string()),
+  viewCount: z.number().optional(),
+  likeCount: z.number().optional(),
+  commentCount: z.number().optional(),
+});
+
 export const getAIProviderStatus = createServerFn({ method: "GET" }).handler(() => {
   return getOpenRouterStatus();
 });
@@ -16,46 +28,29 @@ export const analyzeContentReference = createServerFn({ method: "POST" })
       author: z.string().min(1).max(200),
       url: z.string().url(),
       route: routeSchema.default("balanced"),
-      snapshot: z.object({
-        title: z.string(),
-        description: z.string(),
-        channelTitle: z.string(),
-        publishedAt: z.string(),
-        duration: z.string().optional(),
-        tags: z.array(z.string()),
-        viewCount: z.number().optional(),
-        likeCount: z.number().optional(),
-        commentCount: z.number().optional(),
-      }).optional(),
+      snapshot: snapshotSchema.optional(),
     }),
   )
   .handler(async ({ data }) => {
     const result = await runOpenRouter({
       route: data.route as AIRoute,
       system:
-        "És o motor de Content Intelligence do ViralFlow. Analisa referências de conteúdo de forma factual e operacional. Não inventes métricas que não foram fornecidas. Devolve JSON válido, sem markdown.",
+        "És o motor de Content Intelligence do ViralFlow. Analisa referências de conteúdo de forma factual e operacional. Não inventes métricas que não foram fornecidas. Separa sinais observáveis de hipóteses. Devolve JSON válido, sem markdown.",
       prompt: JSON.stringify({
-        task: "Extrair um primeiro Content DNA a partir de metadados públicos de um vídeo.",
+        task: "Construir Content DNA operacional a partir de uma referência pública de vídeo.",
         reference: {
           title: data.title,
           author: data.author,
           url: data.url,
           snapshot: data.snapshot,
         },
+        rules: [
+          "Não inventar métricas.",
+          "Não tratar hipóteses como factos.",
+          "Extrair padrões úteis para criação de conteúdo original.",
+          "Os hooks alternativos devem ser variações originais, não cópias do título.",
+        ],
         output_schema: {
-          hook: "string",
-          promise: "string",
-          topic: "string",
-          audience_signal: "string",
-          narrative_pattern: "string",
-          retention_mechanics: ["string"],
-          packaging_signals: ["string"],
-          visual_signals: ["string"],
-          content_angles: ["string"],
-          opportunities: ["string"],
-          hook_variants: ["string"],
-          hypotheses_to_verify: ["string"],
-        },
           hook: "string",
           promise: "string",
           topic: "string",
