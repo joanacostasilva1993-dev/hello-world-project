@@ -80,7 +80,7 @@ function Index() {
               <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Workspace</p>
               <NavItem icon={Gauge} label="Command Center" active />
               <NavItem icon={BrainCircuit} label="Intelligence" to="/intelligence" />
-              <NavItem icon={Lightbulb} label="Ideation" />
+              <NavItem icon={Lightbulb} label="Ideation" to="/ideas" />
               <NavItem icon={FileText} label="Script Studio" />
               <NavItem icon={Clapperboard} label="Production" />
               <NavItem icon={BarChart3} label="Analytics" />
@@ -267,7 +267,7 @@ function Index() {
   );
 }
 
-function NavItem({ icon: Icon, label, active = false, to }: { icon: typeof Gauge; label: string; active?: boolean; to?: "/" | "/intelligence" }) {
+function NavItem({ icon: Icon, label, active = false, to }: { icon: typeof Gauge; label: string; active?: boolean; to?: "/" | "/intelligence" | "/ideas" }) {
   const className = `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
     active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
   }`;
