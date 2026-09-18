@@ -34,34 +34,51 @@ export type YouTubeChannelVideo = {
   thumbnail?: string;
 };
 
+type YouTubeSnippet = {
+  title?: string;
+  description?: string;
+  channelId?: string;
+  channelTitle?: string;
+  publishedAt?: string;
+  categoryId?: string;
+  tags?: string[];
+  thumbnails?: {
+    high?: { url?: string };
+    medium?: { url?: string };
+    default?: { url?: string };
+  };
+};
+
+type YouTubeStatistics = {
+  viewCount?: string;
+  likeCount?: string;
+  commentCount?: string;
+  subscriberCount?: string;
+  videoCount?: string;
+};
+
 type YouTubeApiItem = {
-  id?: string | { videoId?: string };
-  snippet?: {
-    title?: string;
-    description?: string;
-    channelId?: string;
-    channelTitle?: string;
-    publishedAt?: string;
-    categoryId?: string;
-    tags?: string[];
-    thumbnails?: {
-      high?: { url?: string };
-      medium?: { url?: string };
-      default?: { url?: string };
-    };
+  id?: string;
+  snippet?: YouTubeSnippet;
+  contentDetails?: {
+    duration?: string;
   };
-  contentDetails?: { duration?: string };
-  statistics?: {
-    viewCount?: string;
-    likeCount?: string;
-    commentCount?: string;
-    subscriberCount?: string;
-    videoCount?: string;
+  statistics?: YouTubeStatistics;
+};
+
+type YouTubeSearchItem = {
+  id?: {
+    videoId?: string;
   };
+  snippet?: YouTubeSnippet;
 };
 
 type YouTubeApiResponse = {
   items?: YouTubeApiItem[];
+};
+
+type YouTubeSearchResponse = {
+  items?: YouTubeSearchItem[];
 };
 
 const API_URL = "https://www.googleapis.com/youtube/v3";
@@ -70,11 +87,12 @@ function getApiKey(): string | undefined {
   return process.env.YOUTUBE_API_KEY;
 }
 
-async function youtubeRequest(
+async function youtubeRequest<T>(
   path: string,
   params: Record<string, string>,
-): Promise<YouTubeApiResponse> {
+): Promise<T> {
   const apiKey = getApiKey();
+
   if (!apiKey) {
     throw new Error("YOUTUBE_API_KEY não está configurada no servidor.");
   }
@@ -92,20 +110,21 @@ async function youtubeRequest(
     );
   }
 
-  return (await response.json()) as YouTubeApiResponse;
+  return (await response.json()) as T;
 }
 
 export async function getYouTubeVideoSnapshot(
   videoId: string,
 ): Promise<YouTubeVideoSnapshot> {
-  const data = await youtubeRequest("videos", {
+  const data = await youtubeRequest<YouTubeApiResponse>("videos", {
     part: "snippet,contentDetails,statistics",
     id: videoId,
     maxResults: "1",
   });
 
   const item = data.items?.[0];
-  if (!item || typeof item.id !== "string") {
+
+  if (!item?.id) {
     throw new Error("Vídeo não encontrado ou indisponível.");
   }
 
@@ -133,36 +152,43 @@ export async function getYouTubeChannelByHandle(
   handle: string,
 ): Promise<YouTubeChannelSnapshot> {
   const normalized = handle.replace(/^@/, "").trim();
+
   if (!normalized) {
     throw new Error("Handle do canal inválido.");
   }
 
-  const data = await youtubeRequest("channels", {
+  const data = await youtubeRequest<YouTubeApiResponse>("channels", {
     part: "snippet,statistics",
     forHandle: normalized,
     maxResults: "1",
   });
 
-  return channelFromItem(data.items?.[0], "Canal não encontrado para este handle.");
+  return channelFromItem(
+    data.items?.[0],
+    "Canal não encontrado para este handle.",
+  );
 }
 
 export async function getYouTubeChannelSnapshot(
   channelId: string,
 ): Promise<YouTubeChannelSnapshot> {
-  const data = await youtubeRequest("channels", {
+  const data = await youtubeRequest<YouTubeApiResponse>("channels", {
     part: "snippet,statistics",
     id: channelId,
     maxResults: "1",
   });
 
-  return channelFromItem(data.items?.[0], "Canal não encontrado ou indisponível.");
+  return channelFromItem(
+    data.items?.[0],
+    "Canal não encontrado ou indisponível.",
+  );
 }
 
 function channelFromItem(
   item: YouTubeApiItem | undefined,
   errorMessage: string,
 ): YouTubeChannelSnapshot {
-  if (!item || typeof item.id !== "string") {
+  if (!item?.id) {
     throw new Error(errorMessage);
   }
 
@@ -187,7 +213,7 @@ export async function getYouTubeChannelVideos(
 ): Promise<YouTubeChannelVideo[]> {
   const safeLimit = Math.min(Math.max(limit, 1), 50);
 
-  const searchData = await youtubeRequest("search", {
+  const searchData = await youtubeRequest<YouTubeSearchResponse>("search", {
     part: "snippet",
     channelId,
     type: "video",
@@ -197,13 +223,14 @@ export async function getYouTubeChannelVideos(
 
   return (searchData.items ?? [])
     .map((item) => {
-      const id =
-        typeof item.id === "object" && item.id !== null
-          ? item.id.videoId
-          : undefined;
+      const videoId = item.id?.videoId;
+
+      if (!videoId) {
+        return null;
+      }
 
       return {
-        id: id ?? "",
+        id: videoId,
         title: item.snippet?.title ?? "",
         publishedAt: item.snippet?.publishedAt ?? "",
         thumbnail:
@@ -211,7 +238,7 @@ export async function getYouTubeChannelVideos(
           item.snippet?.thumbnails?.default?.url,
       };
     })
-    .filter((item): item is YouTubeChannelVideo => Boolean(item.id));
+    .filter((item): item is YouTubeChannelVideo => item !== null);
 }
 
 function toNumber(value: unknown): number | undefined {
