@@ -4,7 +4,7 @@ import {
   analyzeChannelIntelligence,
   analyzeContentReference,
   getAIProviderStatus,
-} from "../lib/ai.functions";
+} from "../lib/ai.functions";\nimport { analyzeContentGap } from "../lib/patterns.functions";
 import {
   analyzeYouTubeChannelByHandle,
   analyzeYouTubeChannel,
@@ -120,7 +120,7 @@ function IntelligencePage() {
     defaultModel: string;
   } | null>(null);
   const [aiResult, setAiResult] = useState<Record<string, unknown> | null>(null);
-  const [channelAiResult, setChannelAiResult] = useState<Record<string, unknown> | null>(null);
+  const [channelAiResult, setChannelAiResult] = useState<Record<string, unknown> | null>(null);\n  const [patternResult, setPatternResult] = useState<Record<string, unknown> | null>(null);
   const [youtubeSnapshot, setYoutubeSnapshot] = useState<Record<string, unknown> | null>(null);
 
   async function analyze() {
@@ -172,6 +172,16 @@ function IntelligencePage() {
             },
           });
           setChannelAiResult(analysis.parsed);
+
+          if (result.videos.length >= 2) {
+            const patterns = await analyzeContentGap({
+              data: {
+                referenceVideos: result.videos,
+                route: "balanced",
+              },
+            });
+            setPatternResult(patterns.parsed);
+          }
         }
 
         return;
@@ -331,6 +341,45 @@ function IntelligencePage() {
             )}
 
             {channelResult && <ChannelDna result={channelResult} />}
+
+            {patternResult && (
+              <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-center gap-2">
+                  <Target className="size-4 text-primary" />
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Viral Pattern Engine · Content Gap
+                  </p>
+                </div>
+                <div className="mt-3 grid gap-4 lg:grid-cols-2">
+                  <InsightList title="Padrões dominantes" values={patternResult.dominant_patterns} />
+                  <InsightList title="Tópicos recorrentes" values={patternResult.recurring_topics} />
+                  <InsightList title="Ângulos pouco usados" values={patternResult.underused_angles} />
+                  <InsightList title="Content gaps" values={patternResult.content_gaps} />
+                  <InsightList title="Padrões de títulos" values={patternResult.title_patterns} />
+                  <InsightList title="Padrões de formato" values={patternResult.format_patterns} />
+                </div>
+                <div className="mt-4 rounded-2xl border border-border bg-background p-4">
+                  <p className="text-xs font-black uppercase tracking-wider text-primary">
+                    Ideias testáveis
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {Array.isArray(patternResult.testable_ideas) &&
+                      patternResult.testable_ideas.map((idea, index) => {
+                        if (!idea || typeof idea !== "object") return null;
+                        const item = idea as Record<string, unknown>;
+                        return (
+                          <div key={index} className="rounded-xl bg-muted/25 p-3">
+                            <p className="text-xs font-bold">{String(item.concept ?? "—")}</p>
+                            <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                              {String(item.why_it_is_distinct ?? "")}
+                            </p>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {channelAiResult && (
               <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
@@ -501,10 +550,16 @@ function IntelligencePage() {
         </section>
 
         <section className="mt-6 grid gap-4 lg:grid-cols-3">
-          <LockedCard
-            title="Opportunity Map"
-            detail="Será calculado a partir de referências analisadas e clusters de conteúdo."
-          />
+          <div className="rounded-3xl border border-primary/20 bg-primary/5 p-5">
+            <p className="text-sm font-black">Opportunity Map</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              Ativo quando houver uma amostra de vídeos e OpenRouter configurado:
+              o Pattern Engine procura padrões repetidos e espaços de conteúdo.
+            </p>
+            <span className="mt-4 inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
+              Pattern Engine ativo
+            </span>
+          </div>
           <LockedCard
             title="Reference Radar"
             detail="Vai comparar padrões entre canais, vídeos e temas guardados."
