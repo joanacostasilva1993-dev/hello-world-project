@@ -4,7 +4,8 @@ import {
   analyzeChannelIntelligence,
   analyzeContentReference,
   getAIProviderStatus,
-} from "../lib/ai.functions";\nimport { analyzeContentGap } from "../lib/patterns.functions";
+} from "../lib/ai.functions";
+import { analyzeContentGap } from "../lib/patterns.functions";
 import {
   analyzeYouTubeChannelByHandle,
   analyzeYouTubeChannel,
@@ -120,7 +121,8 @@ function IntelligencePage() {
     defaultModel: string;
   } | null>(null);
   const [aiResult, setAiResult] = useState<Record<string, unknown> | null>(null);
-  const [channelAiResult, setChannelAiResult] = useState<Record<string, unknown> | null>(null);\n  const [patternResult, setPatternResult] = useState<Record<string, unknown> | null>(null);
+  const [channelAiResult, setChannelAiResult] = useState<Record<string, unknown> | null>(null);
+  const [patternResult, setPatternResult] = useState<Record<string, unknown> | null>(null);
   const [youtubeSnapshot, setYoutubeSnapshot] = useState<Record<string, unknown> | null>(null);
 
   async function analyze() {
