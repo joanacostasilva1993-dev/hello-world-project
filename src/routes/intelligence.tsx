@@ -81,11 +81,23 @@ function IntelligencePage() {
         try {
           const snapshot = await analyzeYouTubeReference({ data: { videoId } });
           setYoutubeSnapshot(snapshot as unknown as Record<string, unknown>);
+          if (provider.configured) {
+            const analysis = await analyzeContentReference({
+              data: {
+                title: snapshot.title,
+                author: snapshot.channelTitle,
+                url: url.trim(),
+                route: "balanced",
+                snapshot,
+              },
+            });
+            setAiResult(analysis.parsed);
+          }
         } catch {
           // Public oEmbed metadata remains available when the server-side YouTube API is not configured.
         }
         setAiStatus(provider);
-        if (provider.configured) {
+        if (provider.configured && !aiResult) {
           const analysis = await analyzeContentReference({
             data: { title: data.title, author: data.author, url: url.trim(), route: "balanced" },
           });
@@ -170,6 +182,17 @@ function IntelligencePage() {
               </div>
             )}
 
+            {aiResult && (
+              <section className="mt-5 grid gap-4 lg:grid-cols-3">
+                <InsightList title="Mecânicas de retenção" values={aiResult.retention_mechanics} />
+                <InsightList title="Sinais de packaging" values={aiResult.packaging_signals} />
+                <InsightList title="Ângulos de conteúdo" values={aiResult.content_angles} />
+                <InsightList title="Oportunidades" values={aiResult.opportunities} />
+                <InsightList title="Hooks alternativos" values={aiResult.hook_variants} />
+                <InsightList title="Hipóteses a validar" values={aiResult.hypotheses_to_verify} />
+              </section>
+            )}
+
             {youtubeSnapshot && (
               <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-primary">YouTube Data API · Snapshot</p>
@@ -240,6 +263,20 @@ function DnaCard({ title, icon: Icon, items }: { title: string; icon: typeof Tar
 
 function formatNumber(value: unknown) {
   return typeof value === "number" ? new Intl.NumberFormat("pt-PT").format(value) : "—";
+}
+
+function InsightList({ title, values }: { title: string; values: unknown }) {
+  const items = Array.isArray(values) ? values.filter((item): item is string => typeof item === "string") : [];
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <p className="text-xs font-black uppercase tracking-wider text-primary">{title}</p>
+      <div className="mt-3 space-y-2">
+        {items.length ? items.map((item) => (
+          <div key={item} className="rounded-xl bg-muted/25 px-3 py-2 text-xs leading-5">{item}</div>
+        )) : <p className="text-xs text-muted-foreground">Sem dados suficientes.</p>}
+      </div>
+    </div>
+  );
 }
 
 function DnaValue({ label, value }: { label: string; value: unknown }) {
