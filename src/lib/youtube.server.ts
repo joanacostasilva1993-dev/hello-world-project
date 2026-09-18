@@ -38,7 +38,7 @@ async function youtubeRequest(path: string, params: Record<string, string>) {
   if (!apiKey) throw new Error("YOUTUBE_API_KEY não está configurada no servidor.");
 
   const query = new URLSearchParams({ ...params, key: apiKey });
-  const response = await fetch(`${API_URL}/${path}?${query.toString()}`);
+  const response = await fetch(API_URL + "/" + path + "?" + query.toString());
 
   if (!response.ok) {
     const detail = await response.text();
@@ -97,6 +97,25 @@ export async function getYouTubeChannelSnapshot(channelId: string): Promise<YouT
     viewCount: toNumber(item.statistics?.viewCount),
     thumbnail: item.snippet?.thumbnails?.high?.url ?? item.snippet?.thumbnails?.default?.url,
   };
+}
+
+export async function getYouTubeChannelVideos(channelId: string, limit = 12): Promise<YouTubeChannelVideo[]> {
+  const searchData = await youtubeRequest("search", {
+    part: "snippet",
+    channelId,
+    type: "video",
+    order: "date",
+    maxResults: String(Math.min(Math.max(limit, 1), 50)),
+  });
+
+  return (searchData.items ?? [])
+    .map((item: any) => ({
+      id: item.id?.videoId,
+      title: item.snippet?.title ?? "",
+      publishedAt: item.snippet?.publishedAt ?? "",
+      thumbnail: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url,
+    }))
+    .filter((item: YouTubeChannelVideo) => Boolean(item.id));
 }
 
 function toNumber(value: unknown) {
