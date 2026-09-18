@@ -25,12 +25,24 @@ export type YouTubeChannelSnapshot = {
   videoCount?: number;
   viewCount?: number;
   thumbnail?: string;
+  uploadsPlaylistId?: string;
 };
 
 export type YouTubeChannelVideo = {
   id: string;
   title: string;
+  description: string;
+  channelId: string;
+  channelTitle: string;
   publishedAt: string;
+  duration?: string;
+  tags: string[];
+  categoryId?: string;
+  viewCount?: number;
+  likeCount?: number;
+  commentCount?: number;
+  engagementRate?: number;
+  estimatedViewsPerDay?: number;
   thumbnail?: string;
 };
 
@@ -62,6 +74,7 @@ type YouTubeApiItem = {
   snippet?: YouTubeSnippet;
   contentDetails?: {
     duration?: string;
+    videoId?: string;
   };
   statistics?: YouTubeStatistics;
 };
@@ -79,6 +92,22 @@ type YouTubeApiResponse = {
 
 type YouTubeSearchResponse = {
   items?: YouTubeSearchItem[];
+};
+
+type YouTubePlaylistItem = {
+  snippet?: YouTubeSnippet & {
+    resourceId?: {
+      videoId?: string;
+    };
+  };
+  contentDetails?: {
+    videoId?: string;
+    videoPublishedAt?: string;
+  };
+};
+
+type YouTubePlaylistResponse = {
+  items?: YouTubePlaylistItem[];
 };
 
 const API_URL = "https://www.googleapis.com/youtube/v3";
@@ -158,7 +187,7 @@ export async function getYouTubeChannelByHandle(
   }
 
   const data = await youtubeRequest<YouTubeApiResponse>("channels", {
-    part: "snippet,statistics",
+    part: "snippet,statistics,contentDetails",
     forHandle: normalized,
     maxResults: "1",
   });
@@ -173,7 +202,7 @@ export async function getYouTubeChannelSnapshot(
   channelId: string,
 ): Promise<YouTubeChannelSnapshot> {
   const data = await youtubeRequest<YouTubeApiResponse>("channels", {
-    part: "snippet,statistics",
+    part: "snippet,statistics,contentDetails",
     id: channelId,
     maxResults: "1",
   });
@@ -204,6 +233,7 @@ function channelFromItem(
     thumbnail:
       item.snippet?.thumbnails?.high?.url ??
       item.snippet?.thumbnails?.default?.url,
+    uploadsPlaylistId: item.contentDetails?.videoId,
   };
 }
 
@@ -211,34 +241,116 @@ export async function getYouTubeChannelVideos(
   channelId: string,
   limit = 12,
 ): Promise<YouTubeChannelVideo[]> {
-  const safeLimit = Math.min(Math.max(limit, 1), 50);
+  const safeLimit = Math.min(Math.max(limit, 1), 24);
+  const channel = await getYouTubeChannelSnapshot(channelId);
 
-  const searchData = await youtubeRequest<YouTubeSearchResponse>("search", {
-    part: "snippet",
-    channelId,
-    type: "video",
-    order: "date",
-    maxResults: String(safeLimit),
+  if (!channel.uploadsPlaylistId) {
+    throw new Error("O canal não disponibilizou a playlist de uploads.");
+  }
+
+  const playlistData = await youtubeRequest<YouTubePlaylistResponse>(
+    "playlistItems",
+    {
+      part: "snippet,contentDetails",
+      playlistId: channel.uploadsPlaylistId,
+      maxResults: String(safeLimit),
+    },
+  );
+
+  const playlistItems = playlistData.items ?? [];
+  const videoIds = playlistItems
+    .map(
+      (item) =>
+        item.contentDetails?.videoId ?? item.snippet?.resourceId?.videoId,
+    )
+    .filter((id): id is string => Boolean(id));
+
+  if (videoIds.length === 0) {
+    return [];
+  }
+
+  const videoData = await youtubeRequest<YouTubeApiResponse>("videos", {
+    part: "snippet,contentDetails,statistics",
+    id: videoIds.join(","),
+    maxResults: String(videoIds.length),
   });
 
-  return (searchData.items ?? [])
-    .map((item) => {
-      const videoId = item.id?.videoId;
+  const byId = new Map(
+    (videoData.items ?? [])
+      .filter((item): item is YouTubeApiItem & { id: string } => Boolean(item.id))
+      .map((item) => [item.id, item]),
+  );
 
-      if (!videoId) {
+  return videoIds
+    .map((videoId) => {
+      const item = byId.get(videoId);
+      if (!item) {
         return null;
       }
+
+      const viewCount = toNumber(item.statistics?.viewCount);
+      const likeCount = toNumber(item.statistics?.likeCount);
+      const commentCount = toNumber(item.statistics?.commentCount);
+      const publishedAt =
+        item.snippet?.publishedAt ??
+        playlistItems.find(
+          (playlistItem) =>
+            (playlistItem.contentDetails?.videoId ??
+              playlistItem.snippet?.resourceId?.videoId) === videoId,
+        )?.contentDetails?.videoPublishedAt ??
+        "";
+
+      const ageDays = daysSince(publishedAt);
 
       return {
         id: videoId,
         title: item.snippet?.title ?? "",
-        publishedAt: item.snippet?.publishedAt ?? "",
+        description: item.snippet?.description ?? "",
+        channelId: item.snippet?.channelId ?? channelId,
+        channelTitle: item.snippet?.channelTitle ?? channel.title,
+        publishedAt,
+        duration: item.contentDetails?.duration,
+        tags: Array.isArray(item.snippet?.tags) ? item.snippet.tags : [],
+        categoryId: item.snippet?.categoryId,
+        viewCount,
+        likeCount,
+        commentCount,
+        engagementRate: calculateEngagementRate(
+          viewCount,
+          likeCount,
+          commentCount,
+        ),
+        estimatedViewsPerDay:
+          viewCount !== undefined ? viewCount / ageDays : undefined,
         thumbnail:
+          item.snippet?.thumbnails?.high?.url ??
           item.snippet?.thumbnails?.medium?.url ??
           item.snippet?.thumbnails?.default?.url,
       };
     })
     .filter((item): item is YouTubeChannelVideo => item !== null);
+}
+
+function calculateEngagementRate(
+  views?: number,
+  likes?: number,
+  comments?: number,
+): number | undefined {
+  if (!views || views <= 0) {
+    return undefined;
+  }
+
+  return ((likes ?? 0) + (comments ?? 0)) / views;
+}
+
+function daysSince(publishedAt: string): number {
+  const published = Date.parse(publishedAt);
+
+  if (!Number.isFinite(published)) {
+    return 1;
+  }
+
+  return Math.max((Date.now() - published) / 86_400_000, 1);
 }
 
 function toNumber(value: unknown): number | undefined {
