@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { analyzeContentReference, getAIProviderStatus } from "../lib/ai.functions";
+import { analyzeYouTubeReference } from "../lib/youtube.functions";
 import {
   ArrowLeft,
   BarChart3,
@@ -47,11 +48,13 @@ function IntelligencePage() {
   const [message, setMessage] = useState("");
   const [aiStatus, setAiStatus] = useState<{ configured: boolean; defaultModel: string } | null>(null);
   const [aiResult, setAiResult] = useState<Record<string, unknown> | null>(null);
+  const [youtubeSnapshot, setYoutubeSnapshot] = useState<Record<string, unknown> | null>(null);
 
   async function analyze() {
     setMessage("");
     setMeta(null);
     setAiResult(null);
+    setYoutubeSnapshot(null);
     if (!url.trim()) {
       setMessage("Cole uma URL do YouTube para começar.");
       return;
@@ -75,6 +78,12 @@ function IntelligencePage() {
       setMeta(data);
       try {
         const provider = await getAIProviderStatus();
+        try {
+          const snapshot = await analyzeYouTubeReference({ data: { videoId } });
+          setYoutubeSnapshot(snapshot as unknown as Record<string, unknown>);
+        } catch {
+          // Public oEmbed metadata remains available when the server-side YouTube API is not configured.
+        }
         setAiStatus(provider);
         if (provider.configured) {
           const analysis = await analyzeContentReference({
@@ -161,6 +170,18 @@ function IntelligencePage() {
               </div>
             )}
 
+            {youtubeSnapshot && (
+              <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary">YouTube Data API · Snapshot</p>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <DnaValue label="Views" value={formatNumber(youtubeSnapshot.viewCount)} />
+                  <DnaValue label="Likes" value={formatNumber(youtubeSnapshot.likeCount)} />
+                  <DnaValue label="Comentários" value={formatNumber(youtubeSnapshot.commentCount)} />
+                  <DnaValue label="Tags" value={Array.isArray(youtubeSnapshot.tags) ? youtubeSnapshot.tags.length : 0} />
+                </div>
+              </div>
+            )}
+
             {meta && (
               <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-background">
                 <img src={meta.thumbnail} alt="" className="aspect-video w-full object-cover" />
@@ -217,7 +238,7 @@ function DnaCard({ title, icon: Icon, items }: { title: string; icon: typeof Tar
   return <div className="rounded-3xl border border-border bg-card p-5"><div className="flex items-center gap-2"><Icon className="size-5 text-primary" /><h2 className="font-black">{title}</h2></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{items.map((item) => <div key={item} className="flex items-center gap-2 rounded-xl bg-muted/25 px-3 py-3 text-xs font-semibold text-muted-foreground"><CheckCircle2 className="size-4 text-primary/60" />{item}</div>)}</div></div>;
 }
 
-function DnaValue({ label, value }: { label: string; value: unknown }) {
+function formatNumber(value: unknown) {\n  return typeof value === "number" ? new Intl.NumberFormat("pt-PT").format(value) : "—";\n}\n\nfunction DnaValue({ label, value }: { label: string; value: unknown }) {
   return <div className="rounded-xl border border-border bg-background p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 text-xs leading-5">{typeof value === "string" ? value : "—"}</p></div>;
 }
 
