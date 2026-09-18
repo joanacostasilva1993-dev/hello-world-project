@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { analyzeContentReference, getAIProviderStatus } from "../lib/ai.functions";
 import {
   ArrowLeft,
   BarChart3,
@@ -44,10 +45,13 @@ function IntelligencePage() {
   const [meta, setMeta] = useState<VideoMeta | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [aiStatus, setAiStatus] = useState<{ configured: boolean; defaultModel: string } | null>(null);
+  const [aiResult, setAiResult] = useState<Record<string, unknown> | null>(null);
 
   async function analyze() {
     setMessage("");
     setMeta(null);
+    setAiResult(null);
     if (!url.trim()) {
       setMessage("Cole uma URL do YouTube para começar.");
       return;
@@ -69,6 +73,18 @@ function IntelligencePage() {
       if (!response.ok) throw new Error("oEmbed indisponível");
       const data = (await response.json()) as VideoMeta;
       setMeta(data);
+      try {
+        const provider = await getAIProviderStatus();
+        setAiStatus(provider);
+        if (provider.configured) {
+          const analysis = await analyzeContentReference({
+            data: { title: data.title, author: data.author, url: url.trim(), route: "balanced" },
+          });
+          setAiResult(analysis.parsed);
+        }
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "A análise AI falhou.");
+      }
     } catch {
       setMessage("Não foi possível obter os metadados públicos deste vídeo. Verifique a URL e tente novamente.");
     } finally {
@@ -130,6 +146,21 @@ function IntelligencePage() {
               </div>
             )}
 
+            {aiResult && (
+              <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="size-4 text-primary" />
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">AI Content DNA</p>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <DnaValue label="Hook" value={aiResult.hook} />
+                  <DnaValue label="Promessa" value={aiResult.promise} />
+                  <DnaValue label="Tema" value={aiResult.topic} />
+                  <DnaValue label="Padrão narrativo" value={aiResult.narrative_pattern} />
+                </div>
+              </div>
+            )}
+
             {meta && (
               <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-background">
                 <img src={meta.thumbnail} alt="" className="aspect-video w-full object-cover" />
@@ -152,7 +183,7 @@ function IntelligencePage() {
             <h2 className="mt-1 text-lg font-black">Providers</h2>
             <div className="mt-4 space-y-3">
               <ProviderRow icon={Youtube} name="YouTube Data API" status="API key necessária" />
-              <ProviderRow icon={BrainCircuit} name="OpenRouter" status="API key necessária" />
+              <ProviderRow icon={BrainCircuit} name="OpenRouter" status={aiStatus?.configured ? `Ligado · ${aiStatus.defaultModel}` : "API key necessária"} />
               <ProviderRow icon={Layers3} name="OpenCode" status="Agente opcional" />
               <ProviderRow icon={BarChart3} name="Analytics" status="Próxima fase" />
             </div>
@@ -184,6 +215,10 @@ function ProviderRow({ icon: Icon, name, status }: { icon: typeof Youtube; name:
 
 function DnaCard({ title, icon: Icon, items }: { title: string; icon: typeof Target; items: string[] }) {
   return <div className="rounded-3xl border border-border bg-card p-5"><div className="flex items-center gap-2"><Icon className="size-5 text-primary" /><h2 className="font-black">{title}</h2></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{items.map((item) => <div key={item} className="flex items-center gap-2 rounded-xl bg-muted/25 px-3 py-3 text-xs font-semibold text-muted-foreground"><CheckCircle2 className="size-4 text-primary/60" />{item}</div>)}</div></div>;
+}
+
+function DnaValue({ label, value }: { label: string; value: unknown }) {
+  return <div className="rounded-xl border border-border bg-background p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 text-xs leading-5">{typeof value === "string" ? value : "—"}</p></div>;
 }
 
 function LockedCard({ title, detail }: { title: string; detail: string }) {
