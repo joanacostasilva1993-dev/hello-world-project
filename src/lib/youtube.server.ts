@@ -75,6 +75,9 @@ type YouTubeApiItem = {
   contentDetails?: {
     duration?: string;
     videoId?: string;
+    relatedPlaylists?: {
+      uploads?: string;
+    };
   };
   statistics?: YouTubeStatistics;
 };
@@ -233,7 +236,7 @@ function channelFromItem(
     thumbnail:
       item.snippet?.thumbnails?.high?.url ??
       item.snippet?.thumbnails?.default?.url,
-    uploadsPlaylistId: item.contentDetails?.videoId,
+    uploadsPlaylistId: item.contentDetails?.relatedPlaylists?.uploads,
   };
 }
 
