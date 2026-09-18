@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { analyzeContentReference, getAIProviderStatus } from "../lib/ai.functions";
+import {
+  analyzeChannelIntelligence,
+  analyzeContentReference,
+  getAIProviderStatus,
+} from "../lib/ai.functions";
 import {
   analyzeYouTubeChannelByHandle,
   analyzeYouTubeChannel,
@@ -42,11 +46,23 @@ type ChannelResult = {
     videoCount?: number;
     viewCount?: number;
     thumbnail?: string;
+    uploadsPlaylistId?: string;
   };
   videos: Array<{
     id: string;
     title: string;
+    description: string;
+    channelId: string;
+    channelTitle: string;
     publishedAt: string;
+    duration?: string;
+    tags: string[];
+    categoryId?: string;
+    viewCount?: number;
+    likeCount?: number;
+    commentCount?: number;
+    engagementRate?: number;
+    estimatedViewsPerDay?: number;
     thumbnail?: string;
   }>;
 };
@@ -68,22 +84,28 @@ function extractVideoId(value: string) {
   return "";
 }
 
-function extractChannelHandle(value: string) {
+function extractChannelReference(value: string) {
   const trimmed = value.trim();
-  if (trimmed.startsWith("@")) return trimmed.split(/[/?#]/)[0];
+  if (trimmed.startsWith("@")) {
+    return { kind: "handle" as const, value: trimmed.split(/[/?#]/)[0] };
+  }
 
   try {
     const url = new URL(trimmed);
-    if (!url.hostname.includes("youtube.com")) return "";
+    if (!url.hostname.includes("youtube.com")) return null;
     const parts = url.pathname.split("/").filter(Boolean);
     const atIndex = parts.findIndex((part) => part.startsWith("@"));
-    if (atIndex >= 0) return parts[atIndex].split(/[/?#]/)[0];
-    if (parts[0] === "channel" && parts[1]) return "";
+    if (atIndex >= 0) {
+      return { kind: "handle" as const, value: parts[atIndex].split(/[/?#]/)[0] };
+    }
+    if (parts[0] === "channel" && parts[1]) {
+      return { kind: "channelId" as const, value: parts[1] };
+    }
   } catch {
-    return "";
+    return null;
   }
 
-  return "";
+  return null;
 }
 
 function IntelligencePage() {
@@ -98,6 +120,7 @@ function IntelligencePage() {
     defaultModel: string;
   } | null>(null);
   const [aiResult, setAiResult] = useState<Record<string, unknown> | null>(null);
+  const [channelAiResult, setChannelAiResult] = useState<Record<string, unknown> | null>(null);
   const [youtubeSnapshot, setYoutubeSnapshot] = useState<Record<string, unknown> | null>(null);
 
   async function analyze() {
@@ -105,6 +128,7 @@ function IntelligencePage() {
     setMeta(null);
     setChannelResult(null);
     setAiResult(null);
+    setChannelAiResult(null);
     setYoutubeSnapshot(null);
 
     if (!url.trim()) {
@@ -119,30 +143,35 @@ function IntelligencePage() {
       setAiStatus(provider);
 
       if (mode === "channel") {
-        const handle = extractChannelHandle(url);
+        const reference = extractChannelReference(url);
 
-        if (!handle) {
-          setMessage("Use uma URL de canal no formato https://youtube.com/@canal.");
+        if (!reference) {
+          setMessage(
+            "Use https://youtube.com/@canal ou https://youtube.com/channel/CHANNEL_ID.",
+          );
           return;
         }
 
-        const result = await analyzeYouTubeChannelByHandle({
-          data: { handle, limit: 12 },
-        });
+        const result =
+          reference.kind === "handle"
+            ? await analyzeYouTubeChannelByHandle({
+                data: { handle: reference.value, limit: 12 },
+              })
+            : await analyzeYouTubeChannel({
+                data: { channelId: reference.value, limit: 12 },
+              });
 
         setChannelResult(result);
 
         if (provider.configured && result.videos.length > 0) {
-          const first = result.videos[0];
-          const analysis = await analyzeContentReference({
+          const analysis = await analyzeChannelIntelligence({
             data: {
-              title: first.title,
-              author: result.channel.title,
-              url: `https://www.youtube.com/watch?v=${first.id}`,
+              channel: result.channel,
+              videos: result.videos,
               route: "balanced",
             },
           });
-          setAiResult(analysis.parsed);
+          setChannelAiResult(analysis.parsed);
         }
 
         return;
@@ -302,6 +331,29 @@ function IntelligencePage() {
             )}
 
             {channelResult && <ChannelDna result={channelResult} />}
+
+            {channelAiResult && (
+              <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-center gap-2">
+                  <BrainCircuit className="size-4 text-primary" />
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                    AI Channel DNA
+                  </p>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <DnaValue label="Posicionamento" value={channelAiResult.channel_positioning} />
+                  <DnaValue label="Sinal de audiência" value={channelAiResult.audience_signal} />
+                  <DnaValue label="Cadência" value={channelAiResult.publishing_pattern} />
+                  <DnaValue label="Formatos recorrentes" value={channelAiResult.standout_formats} />
+                </div>
+                <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                  <InsightList title="Pilares de conteúdo" values={channelAiResult.content_pillars} />
+                  <InsightList title="Padrões de títulos" values={channelAiResult.title_patterns} />
+                  <InsightList title="Sinais de oportunidade" values={channelAiResult.opportunity_signals} />
+                  <InsightList title="Hipóteses a validar" values={channelAiResult.hypotheses_to_validate} />
+                </div>
+              </div>
+            )}
 
             {aiResult && (
               <>
@@ -547,9 +599,16 @@ function ChannelDna({ result }: { result: ChannelResult }) {
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-primary">#{index + 1}</p>
                 <p className="line-clamp-2 text-xs font-bold">{video.title}</p>
-                <p className="mt-1 text-[10px] text-muted-foreground">
-                  {new Intl.DateTimeFormat("pt-PT").format(new Date(video.publishedAt))}
-                </p>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                  <span>{new Intl.DateTimeFormat("pt-PT").format(new Date(video.publishedAt))}</span>
+                  <span>{formatNumber(video.viewCount)} views</span>
+                  {video.engagementRate !== undefined && (
+                    <span>{(video.engagementRate * 100).toFixed(2)}% engagement</span>
+                  )}
+                  {video.estimatedViewsPerDay !== undefined && (
+                    <span>{formatCompact(video.estimatedViewsPerDay)}/dia estimadas</span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -615,6 +674,15 @@ function DnaCard({
 function formatNumber(value: unknown) {
   return typeof value === "number"
     ? new Intl.NumberFormat("pt-PT").format(value)
+    : "—";
+}
+
+function formatCompact(value: unknown) {
+  return typeof value === "number"
+    ? new Intl.NumberFormat("pt-PT", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(value)
     : "—";
 }
 
