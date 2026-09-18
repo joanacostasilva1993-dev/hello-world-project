@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Activity,
   ArrowUpRight,
@@ -79,7 +79,7 @@ function Index() {
             <nav className="space-y-1">
               <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Workspace</p>
               <NavItem icon={Gauge} label="Command Center" active />
-              <NavItem icon={BrainCircuit} label="Intelligence" />
+              <NavItem icon={BrainCircuit} label="Intelligence" to="/intelligence" />
               <NavItem icon={Lightbulb} label="Ideation" />
               <NavItem icon={FileText} label="Script Studio" />
               <NavItem icon={Clapperboard} label="Production" />
@@ -267,15 +267,12 @@ function Index() {
   );
 }
 
-function NavItem({ icon: Icon, label, active = false }: { icon: typeof Gauge; label: string; active?: boolean }) {
-  return (
-    <button className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-      active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-    }`}>
-      <Icon className="size-4" />
-      {label}
-    </button>
-  );
+function NavItem({ icon: Icon, label, active = false, to }: { icon: typeof Gauge; label: string; active?: boolean; to?: "/" | "/intelligence" }) {
+  const className = `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+    active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+  }`;
+  if (to) return <Link to={to} className={className}><Icon className="size-4" />{label}</Link>;
+  return <button className={className}><Icon className="size-4" />{label}</button>;
 }
 
 function MetricCard({ icon: Icon, label, value, detail }: { icon: typeof Gauge; label: string; value: string; detail: string }) {
