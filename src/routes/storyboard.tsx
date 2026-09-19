@@ -50,11 +50,13 @@ function StoryboardPage(){
    if(!r.parsed){setMessage("O motor não devolveu um storyboard utilizável.");return}
    setDirection(String(r.parsed.visual_direction??""));
    const raw=Array.isArray(r.parsed.shots)?r.parsed.shots:[];
-   setShots(raw.filter((x):x is Record<string,unknown>=>!!x&&typeof x==="object").map(x=>({
+   const nextShots=raw.filter((x):x is Record<string,unknown>=>!!x&&typeof x==="object").map(x=>({
     scene:String(x.scene??"—"),time:String(x.time??"—"),shot_type:String(x.shot_type??"—"),camera:String(x.camera??"—"),
     composition:String(x.composition??"—"),action:String(x.action??"—"),continuity:String(x.continuity??"—"),
     image_prompt:String(x.image_prompt??"—"),video_prompt:String(x.video_prompt??"—"),asset_type:String(x.asset_type??"mixed")
    })));
+   setShots(nextShots);
+   localStorage.setItem("viralflow.storyboard", JSON.stringify(nextShots));
   }catch(e){setMessage(e instanceof Error?e.message:"Não foi possível gerar o storyboard.");}
   finally{setLoading(false)}
  }
