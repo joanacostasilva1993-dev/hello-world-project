@@ -97,14 +97,15 @@ export interface FileRoutesById {
   '/scripts': typeof ScriptsRoute
   '/storyboard': typeof StoryboardRoute
   '/media': typeof MediaRoute
+  '/timeline': typeof TimelineRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media'
+  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media'
-  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media'
+  to: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline'
+  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline'
   fileRoutesById: FileRoutesById
 }
 
