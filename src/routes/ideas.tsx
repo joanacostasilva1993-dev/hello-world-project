@@ -41,11 +41,21 @@ function IdeasPage() {
   const [saved, setSaved] = useState<SavedIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [learningContext, setLearningContext] = useState({ strongestPatterns: [] as string[], weakPatterns: [] as string[], experimentsToRun: [] as string[] });
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem("viralflow.savedIdeas");
       if (stored) setSaved(JSON.parse(stored) as SavedIdea[]);
+      const reportRaw = localStorage.getItem("viralflow.learningReport");
+      if (reportRaw) {
+        const report = JSON.parse(reportRaw) as Partial<typeof learningContext>;
+        setLearningContext({
+          strongestPatterns: Array.isArray(report.strongestPatterns) ? report.strongestPatterns : [],
+          weakPatterns: Array.isArray(report.weakPatterns) ? report.weakPatterns : [],
+          experimentsToRun: Array.isArray(report.experimentsToRun) ? report.experimentsToRun : [],
+        });
+      }
     } catch {
       // Ignore invalid local state.
     }
@@ -95,6 +105,7 @@ function IdeasPage() {
           contentGaps,
           dominantPatterns,
           recurringTopics,
+          learningContext,
           route: "balanced",
         },
       });
