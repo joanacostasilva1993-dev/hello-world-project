@@ -117,6 +117,7 @@ export interface FileRoutesById {
   '/media': typeof MediaRoute
   '/timeline': typeof TimelineRoute
   '/drift': typeof DriftRoute
+  '/learning': typeof LearningRoute
 }
 
 export interface FileRouteTypes {
