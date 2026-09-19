@@ -16,6 +16,7 @@ import { Route as HooksRouteImport } from './routes/hooks'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as StoryboardRouteImport } from './routes/storyboard'
 import { Route as MediaRouteImport } from './routes/media'
+import { Route as TimelineRouteImport } from './routes/timeline'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -59,6 +60,12 @@ const MediaRoute = MediaRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 
+const TimelineRoute = TimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/scripts': typeof ScriptsRoute
   '/storyboard': typeof StoryboardRoute
   '/media': typeof MediaRoute
+  '/timeline': typeof TimelineRoute
 }
 
 export interface FileRoutesByTo {
@@ -77,6 +85,7 @@ export interface FileRoutesByTo {
   '/scripts': typeof ScriptsRoute
   '/storyboard': typeof StoryboardRoute
   '/media': typeof MediaRoute
+  '/timeline': typeof TimelineRoute
 }
 
 export interface FileRoutesById {
@@ -107,6 +116,7 @@ export interface RootRouteChildren {
   ScriptsRoute: typeof ScriptsRoute
   StoryboardRoute: typeof StoryboardRoute
   MediaRoute: typeof MediaRoute
+  TimelineRoute: typeof TimelineRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -160,6 +170,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/timeline': {
+      id: '/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -171,6 +188,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScriptsRoute: ScriptsRoute,
   StoryboardRoute: StoryboardRoute,
   MediaRoute: MediaRoute,
+  TimelineRoute: TimelineRoute,
 }
 
 export const routeTree = rootRouteImport
