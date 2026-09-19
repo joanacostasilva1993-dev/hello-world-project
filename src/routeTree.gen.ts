@@ -68,17 +68,28 @@ export interface FileRoutesByFullPath {
   '/storyboard': typeof StoryboardRoute
   '/media': typeof MediaRoute
 }
+
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
   '/ideas': typeof IdeasRoute
+  '/hooks': typeof HooksRoute
+  '/scripts': typeof ScriptsRoute
+  '/storyboard': typeof StoryboardRoute
+  '/media': typeof MediaRoute
 }
+
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
   '/ideas': typeof IdeasRoute
+  '/hooks': typeof HooksRoute
+  '/scripts': typeof ScriptsRoute
+  '/storyboard': typeof StoryboardRoute
+  '/media': typeof MediaRoute
 }
+
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media'
@@ -87,6 +98,7 @@ export interface FileRouteTypes {
   id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media'
   fileRoutesById: FileRoutesById
 }
+
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IntelligenceRoute: typeof IntelligenceRoute
@@ -120,6 +132,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IdeasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hooks': {
+      id: '/hooks'
+      path: '/hooks'
+      fullPath: '/hooks'
+      preLoaderRoute: typeof HooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scripts': {
+      id: '/scripts'
+      path: '/scripts'
+      fullPath: '/scripts'
+      preLoaderRoute: typeof ScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyboard': {
+      id: '/storyboard'
+      path: '/storyboard'
+      fullPath: '/storyboard'
+      preLoaderRoute: typeof StoryboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -132,6 +172,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoryboardRoute: StoryboardRoute,
   MediaRoute: MediaRoute,
 }
+
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
