@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as IntelligenceRouteImport } from './routes/intelligence'
 import { Route as IdeasRouteImport } from './routes/ideas'
+import { Route as HooksRouteImport } from './routes/hooks'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,10 +32,17 @@ const IdeasRoute = IdeasRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 
+const HooksRoute = HooksRouteImport.update({
+  id: '/hooks',
+  path: '/hooks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
   '/ideas': typeof IdeasRoute
+  '/hooks': typeof HooksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -49,16 +57,17 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/intelligence' | '/ideas'
+  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/intelligence' | '/ideas'
-  id: '__root__' | '/' | '/intelligence' | '/ideas'
+  to: '/' | '/intelligence' | '/ideas' | '/hooks'
+  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IntelligenceRoute: typeof IntelligenceRoute
   IdeasRoute: typeof IdeasRoute
+  HooksRoute: typeof HooksRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -91,6 +100,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IntelligenceRoute: IntelligenceRoute,
   IdeasRoute: IdeasRoute,
+  HooksRoute: HooksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
