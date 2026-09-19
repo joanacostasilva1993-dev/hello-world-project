@@ -1,17 +1,55 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CircleAlert, ImageIcon, Loader2, Search, Video } from "lucide-react";
+import { ArrowLeft, CircleAlert, Film, ImageIcon, Loader2, Search, Video } from "lucide-react";
 import { searchMediaAssets } from "../lib/media.functions";
 
 export const Route=createFileRoute("/media")({component:MediaPage});
-type Asset={id:string;provider:string;type:string;title:string;url:string;thumbnailUrl?:string;width?:number;height?:number;author?:string;sourceUrl?:string};
+type Asset={id:string;provider:string;type:"image"|"video";title:string;url:string;thumbnailUrl?:string;width?:number;height?:number;author?:string;sourceUrl?:string;duration?:number};
+
 function MediaPage(){
- const [query,setQuery]=useState(""); const [assets,setAssets]=useState<Asset[]>([]); const [loading,setLoading]=useState(false); const [message,setMessage]=useState("");
- async function search(){if(!query.trim()){setMessage("Indica o que precisas de encontrar.");return}setLoading(true);setMessage("");try{const r=await searchMediaAssets({data:{query:query.trim(),providers:["pexels","pixabay"],perPage:8}});const all=r.results.flatMap(x=>x.assets as Asset[]);setAssets(all);if(!all.length)setMessage("Não foram encontrados assets. Confirma as API keys de Pexels/Pixabay no ambiente do servidor.")}catch(e){setMessage(e instanceof Error?e.message:"Não foi possível pesquisar media.")}finally{setLoading(false)}}
+ const [query,setQuery]=useState("");
+ const [kind,setKind]=useState<"image"|"video">("image");
+ const [assets,setAssets]=useState<Asset[]>([]);
+ const [loading,setLoading]=useState(false);
+ const [message,setMessage]=useState("");
+
+ async function search(){
+  if(!query.trim()){setMessage("Indica o que precisas de encontrar.");return}
+  setLoading(true);setMessage("");
+  try{
+   const r=await searchMediaAssets({data:{query:query.trim(),providers:["pexels","pixabay"],perPage:8,kind}});
+   const all=r.results.flatMap(x=>x.assets as Asset[]);
+   setAssets(all);
+   if(!all.length)setMessage("Não foram encontrados assets. Confirma as API keys de Pexels/Pixabay no ambiente do servidor.");
+  }catch(e){setMessage(e instanceof Error?e.message:"Não foi possível pesquisar media.")}
+  finally{setLoading(false)}
+ }
+
  return <main className="min-h-screen bg-background text-foreground"><div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-  <header className="border-b border-border pb-6"><Link to="/storyboard" className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4"/> Storyboard Engine</Link><div className="mt-4 flex items-center gap-3"><div className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground"><ImageIcon className="size-5"/></div><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">ViralFlow · Media</p><h1 className="text-2xl font-black sm:text-3xl">Media Intelligence</h1></div></div><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Pesquisa assets reais em providers configurados e prepara a base para ligar cada plano do storyboard ao media adequado.</p></header>
-  <section className="mt-6 rounded-3xl border border-border bg-card p-5"><div className="flex flex-col gap-3 sm:flex-row"><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")search()}} placeholder="Ex.: abandoned laboratory, medieval castle, city at night" className="h-11 flex-1 rounded-xl border border-border bg-background px-4 text-sm"/><button onClick={search} disabled={loading} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60">{loading?<Loader2 className="size-4 animate-spin"/>:<Search className="size-4"/>}Pesquisar media</button></div>{message&&<div className="mt-4 flex gap-2 rounded-2xl border p-3 text-xs"><CircleAlert className="size-4 shrink-0 text-primary"/>{message}</div>}</section>
-  <section className="mt-6"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-primary">Media Library · Search</p><h2 className="text-xl font-black">Assets encontrados</h2></div><span className="rounded-full bg-muted px-3 py-1.5 text-[10px] font-bold">{assets.length} assets</span></div>
-   {assets.length?<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{assets.map(a=><article key={a.provider+"-"+a.id} className="overflow-hidden rounded-3xl border border-border bg-card">{a.thumbnailUrl?<img src={a.thumbnailUrl} alt={a.title} className="aspect-[4/3] w-full object-cover"/>:<div className="grid aspect-[4/3] place-items-center bg-muted"><Video className="size-7"/></div>}<div className="p-4"><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black uppercase text-primary">{a.provider}</span><span className="text-[10px] text-muted-foreground">{a.width&&a.height?`${a.width}×${a.height}`:""}</span></div><p className="mt-2 line-clamp-2 text-xs font-bold">{a.title}</p>{a.author&&<p className="mt-1 text-[10px] text-muted-foreground">por {a.author}</p>} {a.sourceUrl&&<a href={a.sourceUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[10px] font-bold text-primary hover:underline">Abrir origem</a>}</div></article>)}</div>:<div className="grid min-h-[360px] place-items-center rounded-3xl border border-dashed p-8 text-center"><div><ImageIcon className="mx-auto size-8 text-primary"/><h2 className="mt-4 font-black">Media Intelligence</h2><p className="mt-2 max-w-md text-sm text-muted-foreground">Pesquisa imagens reais em Pexels e Pixabay quando as respetivas chaves estiverem configuradas.</p></div></div>}
+  <header className="border-b border-border pb-6">
+   <Link to="/storyboard" className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4"/> Storyboard Engine</Link>
+   <div className="mt-4 flex items-center gap-3"><div className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground"><ImageIcon className="size-5"/></div><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">ViralFlow · Media</p><h1 className="text-2xl font-black sm:text-3xl">Media Intelligence</h1></div></div>
+   <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">Uma biblioteca contextual para o criador: pesquisa imagens e vídeos, respeita o formato do plano e mantém a origem do asset visível.</p>
+  </header>
+  <section className="mt-6 rounded-3xl border border-border bg-card p-5">
+   <div className="flex flex-col gap-3 lg:flex-row">
+    <input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")search()}} placeholder="Ex.: abandoned laboratory, medieval castle, city at night" className="h-11 flex-1 rounded-xl border border-border bg-background px-4 text-sm"/>
+    <div className="grid grid-cols-2 rounded-xl border border-border bg-background p-1 sm:w-64">
+     <button onClick={()=>setKind("image")} className={kind==="image"?"rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground":"rounded-lg px-3 py-2 text-xs font-bold text-muted-foreground"}><ImageIcon className="mr-1 inline size-3"/> Imagens</button>
+     <button onClick={()=>setKind("video")} className={kind==="video"?"rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground":"rounded-lg px-3 py-2 text-xs font-bold text-muted-foreground"}><Film className="mr-1 inline size-3"/> Vídeos</button>
+    </div>
+    <button onClick={search} disabled={loading} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60">{loading?<Loader2 className="size-4 animate-spin"/>:<Search className="size-4"/>}Pesquisar</button>
+   </div>
+   {message&&<div className="mt-4 flex gap-2 rounded-2xl border p-3 text-xs"><CircleAlert className="size-4 shrink-0 text-primary"/>{message}</div>}
+  </section>
+  <section className="mt-6">
+   <div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-primary">Media Library · {kind==="video"?"Video Search":"Image Search"}</p><h2 className="text-xl font-black">Assets encontrados</h2></div><span className="rounded-full bg-muted px-3 py-1.5 text-[10px] font-bold">{assets.length} assets</span></div>
+   {assets.length?<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{assets.map(a=><article key={a.provider+"-"+a.id} className="overflow-hidden rounded-3xl border border-border bg-card">
+    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+     {a.type==="video"?<><video src={a.url} poster={a.thumbnailUrl} muted playsInline preload="metadata" className="h-full w-full object-cover"/><span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-[9px] font-black"><Video className="size-3"/> VIDEO</span></>:a.thumbnailUrl?<img src={a.thumbnailUrl} alt={a.title} className="h-full w-full object-cover"/>:<ImageIcon className="mx-auto mt-20 size-7"/>}
+    </div>
+    <div className="p-4"><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black uppercase text-primary">{a.provider}</span><span className="text-[10px] text-muted-foreground">{a.width&&a.height?(a.width+"×"+a.height):""}{a.duration?(" · "+Math.round(a.duration)+"s"):""}</span></div><p className="mt-2 line-clamp-2 text-xs font-bold">{a.title}</p>{a.author&&<p className="mt-1 text-[10px] text-muted-foreground">por {a.author}</p>}{a.sourceUrl&&<a href={a.sourceUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[10px] font-bold text-primary hover:underline">Abrir origem</a>}</div>
+   </article>)}</div>:<div className="grid min-h-[360px] place-items-center rounded-3xl border border-dashed p-8 text-center"><div><ImageIcon className="mx-auto size-8 text-primary"/><h2 className="mt-4 font-black">Media Intelligence</h2><p className="mt-2 max-w-md text-sm text-muted-foreground">Pesquisa imagens ou vídeos em Pexels e Pixabay quando as respetivas chaves estiverem configuradas.</p></div></div>}
   </section>
  </div></main>
+}
