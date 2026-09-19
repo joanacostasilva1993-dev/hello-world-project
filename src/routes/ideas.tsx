@@ -111,7 +111,7 @@ function IdeasPage() {
           concept: String(item.concept ?? "Sem conceito"),
           angle: String(item.angle ?? "—"),
           promise: String(item.promise ?? "—"),
-          audience: String(item.audience ?? audience || "—"),
+          audience: String((item.audience ?? audience) || "—"),
           format: String(item.format ?? "—"),
           hook: String(item.hook ?? "—"),
           differentiation: String(item.differentiation ?? "—"),
