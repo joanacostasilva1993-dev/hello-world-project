@@ -15,6 +15,7 @@ import { Route as IdeasRouteImport } from './routes/ideas'
 import { Route as HooksRouteImport } from './routes/hooks'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as StoryboardRouteImport } from './routes/storyboard'
+import { Route as MediaRouteImport } from './routes/media'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +53,12 @@ const StoryboardRoute = StoryboardRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 
+const MediaRoute = MediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/hooks': typeof HooksRoute
   '/scripts': typeof ScriptsRoute
   '/storyboard': typeof StoryboardRoute
+  '/media': typeof MediaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -73,10 +81,10 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard'
+  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard'
-  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard'
+  to: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media'
+  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -86,6 +94,7 @@ export interface RootRouteChildren {
   HooksRoute: typeof HooksRoute
   ScriptsRoute: typeof ScriptsRoute
   StoryboardRoute: typeof StoryboardRoute
+  MediaRoute: typeof MediaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -121,6 +130,7 @@ const rootRouteChildren: RootRouteChildren = {
   HooksRoute: HooksRoute,
   ScriptsRoute: ScriptsRoute,
   StoryboardRoute: StoryboardRoute,
+  MediaRoute: MediaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
