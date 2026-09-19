@@ -8,7 +8,7 @@ export const Route = createFileRoute("/storyboard")({ component: StoryboardPage 
 
 type SavedScript={title:string;format:string;scenes:Array<{time:string;visual:string;narration:string;on_screen_text:string;sfx:string;transition:string}>;};
 type Shot={scene:string;time:string;shot_type:string;camera:string;composition:string;action:string;continuity:string;image_prompt:string;video_prompt:string;asset_type:string};
-type MediaAsset={id:string;provider:"pexels"|"pixabay";type:"image"|"video";title:string;url:string;thumbnailUrl?:string;width?:number;height?:number;author?:string;sourceUrl?:string;tags?:string[]};
+type MediaAsset={id:string;provider:"pexels"|"pixabay";type:"image"|"video";title:string;url:string;thumbnailUrl?:string;width?:number;height?:number;author?:string;sourceUrl?:string;tags?:string[];matchScore?:number;matchReasons?:string[];recommended?:boolean};
 type ShotMedia={query:string;assets:MediaAsset[]};
 
 function StoryboardPage(){
@@ -67,7 +67,7 @@ function StoryboardPage(){
     },
     providers:["pexels","pixabay"],perPage:6
    }});
-   const assets=r.results.flatMap((result)=>result.assets as MediaAsset[]);
+   const assets=r.results.flatMap((result)=>result.assets as MediaAsset[]).sort((a,b)=>(b.matchScore??0)-(a.matchScore??0));
    setMedia((current)=>({...current,[index]:{query:r.query,assets}}));
    if(!assets.length)setMessage("Nenhum asset encontrado. Confirma as chaves Pexels/Pixabay no ambiente do projeto.");
   }catch(e){setMessage(e instanceof Error?e.message:"Não foi possível pesquisar media para esta cena.");}
@@ -120,8 +120,8 @@ function StoryboardPage(){
       {media[i]&&<div className="mt-4">
        <p className="text-[10px] text-muted-foreground">Query: <span className="font-semibold text-foreground">{media[i].query}</span></p>
        {media[i].assets.length?<div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{media[i].assets.map(asset=><button key={asset.provider+"-"+asset.id} onClick={()=>selectMedia(i,asset)} className="group overflow-hidden rounded-2xl border border-border bg-background text-left transition hover:border-primary/50">
-        <div className="relative aspect-video overflow-hidden bg-muted"><img src={asset.thumbnailUrl||asset.url} alt={asset.title} className="h-full w-full object-cover transition group-hover:scale-105"/><span className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[9px] font-black uppercase">{asset.provider}</span>{selected[i]?.id===asset.id&&<span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-4"/></span>}</div>
-        <div className="p-3"><p className="line-clamp-2 text-xs font-bold">{asset.title}</p><p className="mt-1 text-[10px] text-muted-foreground">{asset.width&&asset.height?asset.width+" × "+asset.height:""} {asset.author?"· "+asset.author:""}</p>{asset.sourceUrl&&<span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-primary"><ExternalLink className="size-3"/> Origem</span>}</div>
+        <div className="relative aspect-video overflow-hidden bg-muted"><img src={asset.thumbnailUrl||asset.url} alt={asset.title} className="h-full w-full object-cover transition group-hover:scale-105"/><span className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[9px] font-black uppercase">{asset.provider}</span>{asset.recommended&&<span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-1 text-[9px] font-black text-primary-foreground">RECOMENDADO</span>}{selected[i]?.id===asset.id&&<span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-4"/></span>}</div>
+        <div className="p-3"><div className="flex items-center justify-between gap-2"><p className="line-clamp-2 text-xs font-bold">{asset.title}</p>{typeof asset.matchScore==="number"&&<span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black text-primary">{asset.matchScore}% match</span>}</div><p className="mt-1 text-[10px] text-muted-foreground">{asset.width&&asset.height?asset.width+" × "+asset.height:""} {asset.author?"· "+asset.author:""}</p>{asset.matchReasons?.length&&<p className="mt-2 line-clamp-2 text-[9px] leading-4 text-muted-foreground">{asset.matchReasons.join(" · ")}</p>{asset.sourceUrl&&<span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-primary"><ExternalLink className="size-3"/> Origem</span>}</div>
        </button>)}</div>:<div className="mt-3 rounded-xl border border-dashed p-4 text-xs text-muted-foreground">Não foram encontrados resultados para esta pesquisa.</div>}
       </div>}
      </div>
