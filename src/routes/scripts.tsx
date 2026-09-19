@@ -20,7 +20,7 @@ function ScriptsPage(){
  async function create(){
   if(!selected||!hook.trim()){setMessage("Escolhe uma ideia e indica o hook que será usado.");return}
   setLoading(true);setMessage("");setScript(null);
-  try{const r=await generateScript({data:{concept:selected.concept,angle:selected.angle,promise:selected.promise,audience:selected.audience,format:selected.format,hook:hook.trim(),durationSeconds:duration,route:"balanced"}});if(!r.parsed){setMessage("O motor não devolveu um roteiro utilizável.");return}setScript(r.parsed)}
+  try{const r=await generateScript({data:{concept:selected.concept,angle:selected.angle,promise:selected.promise,audience:selected.audience,format:selected.format,hook:hook.trim(),durationSeconds:duration,route:"balanced"}});if(!r.parsed){setMessage("O motor não devolveu um roteiro utilizável.");return}setScript(r.parsed); localStorage.setItem("viralflow.lastScript", JSON.stringify({...r.parsed, format:selected.format}))}
   catch(e){setMessage(e instanceof Error?e.message:"Não foi possível criar o roteiro.");}finally{setLoading(false)}
  }
  const scenes=script&&Array.isArray(script.scenes)?script.scenes.filter((x):x is Record<string,unknown>=>!!x&&typeof x==="object").map(x=>({time:String(x.time??"—"),visual:String(x.visual??"—"),narration:String(x.narration??"—"),on_screen_text:String(x.on_screen_text??"—"),sfx:String(x.sfx??"—"),transition:String(x.transition??"—")})):[] as Scene[];
