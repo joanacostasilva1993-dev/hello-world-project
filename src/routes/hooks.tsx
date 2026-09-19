@@ -14,13 +14,14 @@ function HooksPage() {
   const [hooks,setHooks]=useState<Hook[]>([]);
   const [loading,setLoading]=useState(false);
   const [message,setMessage]=useState("");
-  useEffect(()=>{ try { const raw=localStorage.getItem("viralflow.savedIdeas"); if(raw) setSavedIdeas(JSON.parse(raw)); } catch {} },[]);
+  const [learningContext,setLearningContext]=useState({strongestPatterns:[] as string[],weakPatterns:[] as string[],experimentsToRun:[] as string[]});
+  useEffect(()=>{ try { const raw=localStorage.getItem("viralflow.savedIdeas"); if(raw) setSavedIdeas(JSON.parse(raw)); const reportRaw=localStorage.getItem("viralflow.learningReport"); if(reportRaw){ const report=JSON.parse(reportRaw) as Partial<typeof learningContext>; setLearningContext({strongestPatterns:Array.isArray(report.strongestPatterns)?report.strongestPatterns:[],weakPatterns:Array.isArray(report.weakPatterns)?report.weakPatterns:[],experimentsToRun:Array.isArray(report.experimentsToRun)?report.experimentsToRun:[]}); } } catch {} },[]);
 
   async function generate() {
     if(!selected) return;
     setLoading(true); setMessage(""); setHooks([]);
     try {
-      const result=await generateHooks({data:{concept:selected.concept,angle:selected.angle,promise:selected.promise,audience:selected.audience,format:selected.format,route:"balanced"}});
+      const result=await generateHooks({data:{concept:selected.concept,angle:selected.angle,promise:selected.promise,audience:selected.audience,format:selected.format,learningContext,route:"balanced"}});
       if(!result.parsed || !Array.isArray(result.parsed.hooks)) { setMessage("O motor não devolveu hooks utilizáveis."); return; }
       setHooks(result.parsed.hooks.filter((x):x is Record<string,unknown>=>!!x&&typeof x==="object").map(x=>({
         text:String(x.text??"—"), mechanism:String(x.mechanism??"—"), opening_visual:String(x.opening_visual??"—"), risk:String(x.risk??"medium"), why_it_works:String(x.why_it_works??"—")
@@ -33,7 +34,7 @@ function HooksPage() {
     <header className="border-b border-border pb-6">
       <Link to="/ideas" className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4"/> Idea Engine</Link>
       <div className="mt-4 flex items-center gap-3"><div className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground"><Target className="size-5"/></div><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">ViralFlow · Hook Lab</p><h1 className="text-2xl font-black sm:text-3xl">Hook Lab</h1></div></div>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Transforma uma ideia guardada em múltiplas aberturas testáveis, cada uma com mecanismo narrativo e sugestão visual.</p>
+      <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Transforma uma ideia guardada em múltiplas aberturas testáveis, usando também os sinais mais recentes do Learning Loop.</p>
     </header>
     <section className="mt-6 grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
       <div className="rounded-3xl border border-border bg-card p-5">
