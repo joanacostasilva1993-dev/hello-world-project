@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as IntelligenceRouteImport } from './routes/intelligence'
 import { Route as IdeasRouteImport } from './routes/ideas'
 import { Route as HooksRouteImport } from './routes/hooks'
+import { Route as ScriptsRouteImport } from './routes/scripts'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -38,11 +39,18 @@ const HooksRoute = HooksRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 
+const ScriptsRoute = ScriptsRouteImport.update({
+  id: '/scripts',
+  path: '/scripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
   '/ideas': typeof IdeasRoute
   '/hooks': typeof HooksRoute
+  '/scripts': typeof ScriptsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -57,10 +65,10 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks'
+  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/intelligence' | '/ideas' | '/hooks'
-  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks'
+  to: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts'
+  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -68,6 +76,7 @@ export interface RootRouteChildren {
   IntelligenceRoute: typeof IntelligenceRoute
   IdeasRoute: typeof IdeasRoute
   HooksRoute: typeof HooksRoute
+  ScriptsRoute: typeof ScriptsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -101,6 +110,7 @@ const rootRouteChildren: RootRouteChildren = {
   IntelligenceRoute: IntelligenceRoute,
   IdeasRoute: IdeasRoute,
   HooksRoute: HooksRoute,
+  ScriptsRoute: ScriptsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
