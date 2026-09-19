@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Camera, Check, CircleAlert, Clapperboard, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
 import { generateStoryboard } from "../lib/storyboard.functions";
 import { searchMediaForShot } from "../lib/media.functions";
+import { buildAssetGenerationRequest, type AssetGenerationRequest } from "../lib/generation.functions";
 
 export const Route = createFileRoute("/storyboard")({ component: StoryboardPage });
 
@@ -22,6 +23,8 @@ function StoryboardPage(){
  const [mediaLoading,setMediaLoading]=useState<number|null>(null);
  const [media,setMedia]=useState<Record<number,ShotMedia>>({});
  const [selected,setSelected]=useState<Record<number,MediaAsset>>({});
+ const [generation,setGeneration]=useState<Record<number,AssetGenerationRequest>>({});
+ const [generationLoading,setGenerationLoading]=useState<number|null>(null);
 
  useEffect(()=>{
   try{
@@ -74,6 +77,19 @@ function StoryboardPage(){
   finally{setMediaLoading(null)}
  }
 
+ async function queueGeneration(index:number,shot:Shot){
+  setGenerationLoading(index);setMessage("");
+  try{
+   const r=await buildAssetGenerationRequest({data:{shot:{
+    shot_type:shot.shot_type,composition:shot.composition,action:shot.action,
+    image_prompt:shot.image_prompt,video_prompt:shot.video_prompt,
+    asset_type:shot.asset_type==="image"||shot.asset_type==="video"||shot.asset_type==="mixed"?shot.asset_type:"image"
+   },format}});
+   setGeneration((current)=>{const next={...current,[index]:r};localStorage.setItem("viralflow.generationQueue",JSON.stringify(next));return next;});
+  }catch(e){setMessage(e instanceof Error?e.message:"Não foi possível preparar a geração do asset.");}
+  finally{setGenerationLoading(null)}
+ }
+
  function selectMedia(index:number,asset:MediaAsset){
   setSelected((current)=>{
    const next={...current,[index]:asset};
@@ -112,10 +128,10 @@ function StoryboardPage(){
      <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
        <div><p className="text-[10px] font-black uppercase tracking-wider text-primary">Media Intelligence</p><p className="mt-1 text-xs text-muted-foreground">Pesquisa contextual para este plano</p></div>
-       <button onClick={()=>findMedia(i,s)} disabled={mediaLoading===i} className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-60">{mediaLoading===i?<Loader2 className="size-3 animate-spin"/>:<Search className="size-3"/>}{mediaLoading===i?"A pesquisar...":"Encontrar media"}</button>
+       <button onClick={()=>findMedia(i,s)} disabled={mediaLoading===i} className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-60">{mediaLoading===i?<Loader2 className="size-3 animate-spin"/>:<Search className="size-3"/>}{mediaLoading===i?"A pesquisar...":"Encontrar media"}</button><button onClick={()=>queueGeneration(i,s)} disabled={generationLoading===i} className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-background px-3 py-2 text-xs font-bold text-primary disabled:opacity-60">{generationLoading===i?<Loader2 className="size-3 animate-spin"/>:<Sparkles className="size-3"/>}{generationLoading===i?"A preparar...":"Gerar asset"}</button>
       </div>
 
-      {selected[i]&&<div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/30 bg-background p-2"><img src={selected[i].thumbnailUrl||selected[i].url} alt="" className="size-14 rounded-lg object-cover"/><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase text-primary">Asset selecionado · {selected[i].provider}</p><p className="truncate text-xs font-bold">{selected[i].title}</p></div><Check className="size-4 text-primary"/></div>}
+      {selected[i]&&<div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/30 bg-background p-2"><img src={selected[i].thumbnailUrl||selected[i].url} alt="" className="size-14 rounded-lg object-cover"/><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase text-primary">Asset selecionado · {selected[i].provider}</p><p className="truncate text-xs font-bold">{selected[i].title}</p></div><Check className="size-4 text-primary"/></div>}{generation[i]&&<div className="mt-3 rounded-xl border border-dashed border-primary/30 bg-background p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wider text-primary">Fallback de geração preparado</p><p className="mt-1 text-xs text-muted-foreground">Pedido neutral, pronto para ligar a um provider local ou de geração.</p></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black text-primary">{generation[i].kind.toUpperCase()}</span></div><p className="mt-3 text-[10px] font-bold text-muted-foreground">Formato: {generation[i].aspectRatio}{generation[i].durationSeconds ? " · "+generation[i].durationSeconds+"s" : ""}</p><p className="mt-2 text-xs leading-5">{generation[i].prompt}</p><p className="mt-2 text-[9px] leading-4 text-muted-foreground">Negative prompt: {generation[i].negativePrompt}</p></div>}
 
       {media[i]&&<div className="mt-4">
        <p className="text-[10px] text-muted-foreground">Query: <span className="font-semibold text-foreground">{media[i].query}</span></p>
