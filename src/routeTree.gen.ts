@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as IntelligenceRouteImport } from './routes/intelligence'
+import { Route as IdeasRouteImport } from './routes/ideas'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,30 +25,40 @@ const IntelligenceRoute = IntelligenceRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 
+const IdeasRoute = IdeasRouteImport.update({
+  id: '/ideas',
+  path: '/ideas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
+  '/ideas': typeof IdeasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
+  '/ideas': typeof IdeasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
+  '/ideas': typeof IdeasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/intelligence'
+  fullPaths: '/' | '/intelligence' | '/ideas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/intelligence'
-  id: '__root__' | '/' | '/intelligence'
+  to: '/' | '/intelligence' | '/ideas'
+  id: '__root__' | '/' | '/intelligence' | '/ideas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IntelligenceRoute: typeof IntelligenceRoute
+  IdeasRoute: typeof IdeasRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -72,6 +83,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IntelligenceRoute: IntelligenceRoute,
+  IdeasRoute: IdeasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
