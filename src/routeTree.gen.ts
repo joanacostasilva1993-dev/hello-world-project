@@ -94,6 +94,7 @@ export interface FileRoutesByTo {
   '/storyboard': typeof StoryboardRoute
   '/media': typeof MediaRoute
   '/timeline': typeof TimelineRoute
+  '/drift': typeof DriftRoute
 }
 
 export interface FileRoutesById {
@@ -106,6 +107,7 @@ export interface FileRoutesById {
   '/storyboard': typeof StoryboardRoute
   '/media': typeof MediaRoute
   '/timeline': typeof TimelineRoute
+  '/drift': typeof DriftRoute
 }
 
 export interface FileRouteTypes {
@@ -185,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/timeline'
       fullPath: '/timeline'
       preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/drift': {
+      id: '/drift'
+      path: '/drift'
+      fullPath: '/drift'
+      preLoaderRoute: typeof DriftRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
