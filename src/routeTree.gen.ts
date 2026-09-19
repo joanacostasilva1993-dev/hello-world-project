@@ -17,6 +17,7 @@ import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as StoryboardRouteImport } from './routes/storyboard'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as DriftRouteImport } from './routes/drift'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -66,6 +67,12 @@ const TimelineRoute = TimelineRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 
+const DriftRoute = DriftRouteImport.update({
+  id: '/drift',
+  path: '/drift',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/storyboard': typeof StoryboardRoute
   '/media': typeof MediaRoute
   '/timeline': typeof TimelineRoute
+  '/drift': typeof DriftRoute
 }
 
 export interface FileRoutesByTo {
@@ -102,10 +110,10 @@ export interface FileRoutesById {
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline'
+  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline' | '/drift'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline'
-  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline'
+  to: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline' | '/drift'
+  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline' | '/drift'
   fileRoutesById: FileRoutesById
 }
 
@@ -118,6 +126,7 @@ export interface RootRouteChildren {
   StoryboardRoute: typeof StoryboardRoute
   MediaRoute: typeof MediaRoute
   TimelineRoute: typeof TimelineRoute
+  DriftRoute: typeof DriftRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -190,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoryboardRoute: StoryboardRoute,
   MediaRoute: MediaRoute,
   TimelineRoute: TimelineRoute,
+  DriftRoute: DriftRoute,
 }
 
 export const routeTree = rootRouteImport
