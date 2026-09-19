@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Camera, Check, CircleAlert, Clapperboard, ExternalLink, Image as ImageIcon, Loader2, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, Camera, Check, CircleAlert, Clapperboard, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
 import { generateStoryboard } from "../lib/storyboard.functions";
 import { searchMediaForShot } from "../lib/media.functions";
 
@@ -133,4 +133,3 @@ function StoryboardPage(){
 
 function Info({label,value}:{label:string;value:string}){return <div className="rounded-2xl bg-background p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 text-xs leading-5">{value}</p></div>}
 
-void ImageIcon;
