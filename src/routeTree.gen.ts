@@ -18,6 +18,7 @@ import { Route as StoryboardRouteImport } from './routes/storyboard'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as DriftRouteImport } from './routes/drift'
+import { Route as LearningRouteImport } from './routes/learning'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -73,6 +74,12 @@ const DriftRoute = DriftRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 
+const LearningRoute = LearningRouteImport.update({
+  id: '/learning',
+  path: '/learning',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/intelligence': typeof IntelligenceRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/media': typeof MediaRoute
   '/timeline': typeof TimelineRoute
   '/drift': typeof DriftRoute
+  '/learning': typeof LearningRoute
 }
 
 export interface FileRoutesByTo {
@@ -95,6 +103,7 @@ export interface FileRoutesByTo {
   '/media': typeof MediaRoute
   '/timeline': typeof TimelineRoute
   '/drift': typeof DriftRoute
+  '/learning': typeof LearningRoute
 }
 
 export interface FileRoutesById {
@@ -112,10 +121,10 @@ export interface FileRoutesById {
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline' | '/drift'
+  fullPaths: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline' | '/drift' | '/learning'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline' | '/drift'
-  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline' | '/drift'
+  to: '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline' | '/drift' | '/learning'
+  id: '__root__' | '/' | '/intelligence' | '/ideas' | '/hooks' | '/scripts' | '/storyboard' | '/media' | '/timeline' | '/drift' | '/learning'
   fileRoutesById: FileRoutesById
 }
 
@@ -129,6 +138,7 @@ export interface RootRouteChildren {
   MediaRoute: typeof MediaRoute
   TimelineRoute: typeof TimelineRoute
   DriftRoute: typeof DriftRoute
+  LearningRoute: typeof LearningRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -189,6 +199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TimelineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learning': {
+      id: '/learning'
+      path: '/learning'
+      fullPath: '/learning'
+      preLoaderRoute: typeof LearningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/drift': {
       id: '/drift'
       path: '/drift'
@@ -209,6 +226,7 @@ const rootRouteChildren: RootRouteChildren = {
   MediaRoute: MediaRoute,
   TimelineRoute: TimelineRoute,
   DriftRoute: DriftRoute,
+  LearningRoute: LearningRoute,
 }
 
 export const routeTree = rootRouteImport
