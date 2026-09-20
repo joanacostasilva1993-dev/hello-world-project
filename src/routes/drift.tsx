@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, Clipboard, Download, ExternalLink, FileJson, ListChecks, RefreshCw } from "lucide-react";
 import { buildDriftBridgeManifest, type DriftBridgeManifest } from "../lib/driftBridge.functions";
 import { buildDriftMcpExecutionPlan, type DriftMcpExecutionPlan } from "../lib/driftExecutor.functions";
+import { checkLocalBridge, callLocalBridge, LOCAL_BRIDGE_DEFAULT_ORIGIN, localBridgeJobSchema, type LocalBridgeJob } from "../lib/localBridge.functions";
 import type { ProductionTimeline } from "../lib/timeline.functions";
 
 export const Route = createFileRoute("/drift")({ component: DriftBridgePage });
@@ -11,6 +12,9 @@ function DriftBridgePage() {
   const [manifest, setManifest] = useState<DriftBridgeManifest | null>(null);
   const [plan, setPlan] = useState<DriftMcpExecutionPlan | null>(null);
   const [message, setMessage] = useState("");
+  const [bridge, setBridge] = useState<"unknown" | "online" | "offline">("unknown");
+  const [job, setJob] = useState<LocalBridgeJob | null>(null);
+  const [running, setRunning] = useState(false);
 
   function build() {
     try {
@@ -32,7 +36,23 @@ function DriftBridgePage() {
 
   useEffect(() => {
     build();
+    checkLocalBridge().then((response) => {
+      if (response.type === "health") setBridge("online");
+    }).catch(() => setBridge("offline"));
   }, []);
+
+  useEffect(() => {
+    if (!job || !["queued", "running"].includes(job.status)) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const response = await callLocalBridge({ command: "status", jobId: job.id });
+        if (response.type === "job") setJob(localBridgeJobSchema.parse(response.job));
+      } catch {
+        setBridge("offline");
+      }
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [job?.id, job?.status]);
 
   function downloadJson(filename: string, value: unknown) {
     const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
@@ -52,6 +72,46 @@ function DriftBridgePage() {
   function exportPlan() {
     if (!plan) return;
     downloadJson("viralflow-drift-mcp-plan.json", plan);
+  }
+
+  async function healthCheck() {
+    try {
+      const response = await checkLocalBridge();
+      setBridge(response.type === "health" ? "online" : "offline");
+      setMessage(response.type === "health" ? `Local Bridge online · v${response.bridgeVersion} · ${response.driftConnected ? "Drift ligado" : "Dry Run"}.` : "Local Bridge respondeu com erro.");
+    } catch (error) {
+      setBridge("offline");
+      setMessage(error instanceof Error ? error.message : "Local Bridge indisponível.");
+    }
+  }
+
+  async function startDryRun() {
+    if (!plan) return;
+    setRunning(true);
+    try {
+      const response = await callLocalBridge({ command: "start", plan });
+      if (response.type === "job") {
+        setJob(response.job);
+        setBridge("online");
+        setMessage("Dry Run iniciado. O bridge está a percorrer o plano sem alterar o Drift.");
+      }
+    } catch (error) {
+      setBridge("offline");
+      setMessage(error instanceof Error ? error.message : "Não foi possível iniciar o Dry Run.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function cancelJob() {
+    if (!job) return;
+    try {
+      const response = await callLocalBridge({ command: "cancel", jobId: job.id });
+      if (response.type === "job") setJob(response.job);
+      setMessage("Job cancelado.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível cancelar o job.");
+    }
   }
 
   async function copyManifest() {
@@ -78,12 +138,22 @@ function DriftBridgePage() {
 
       <section className="mt-6 flex flex-wrap gap-3">
         <button type="button" onClick={build} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-bold text-primary-foreground"><RefreshCw className="size-4" /> Preparar bridge</button>
+        <button type="button" onClick={healthCheck} className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-xs font-bold"><span className={bridge === "online" ? "size-2 rounded-full bg-emerald-500" : "size-2 rounded-full bg-muted-foreground"} /> Health Check</button>
+        <button type="button" onClick={startDryRun} disabled={!plan || running || job?.status === "running"} className="inline-flex items-center gap-2 rounded-xl border border-primary/40 px-4 py-3 text-xs font-bold disabled:opacity-40"><ListChecks className="size-4" /> Iniciar Dry Run</button>
+        {job?.status === "running" && <button type="button" onClick={cancelJob} className="inline-flex items-center gap-2 rounded-xl border border-destructive/40 px-4 py-3 text-xs font-bold">Cancelar</button>}
         <button type="button" onClick={exportJson} disabled={!manifest} className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-xs font-bold disabled:opacity-40"><Download className="size-4" /> Exportar manifesto</button>
         <button type="button" onClick={exportPlan} disabled={!plan} className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-xs font-bold disabled:opacity-40"><ListChecks className="size-4" /> Exportar plano MCP</button>
         <button type="button" onClick={copyManifest} disabled={!manifest} className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-xs font-bold disabled:opacity-40"><Clipboard className="size-4" /> Copiar JSON</button>
       </section>
 
       {message && <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-4 text-xs">{message}</div>}
+
+      {job && <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="text-xs font-black">Local Bridge · {job.status}</p><p className="mt-1 text-[10px] text-muted-foreground">{job.currentStep} / {job.totalSteps} passos</p></div>
+          <div className="h-2 w-48 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary transition-all" style={{ width: \`${job.totalSteps ? Math.round(job.currentStep / job.totalSteps * 100) : 0}%\` }} /></div>
+        </div>
+      </div>}
 
       {manifest && plan ? <div className="mt-6 space-y-5">
         <div className="grid gap-3 sm:grid-cols-5">
