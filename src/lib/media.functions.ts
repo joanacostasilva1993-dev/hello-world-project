@@ -11,12 +11,9 @@ const shotSchema = z.object({
 });
 
 const mediaKindSchema = z.enum(["image", "video"]);
+type MediaKind = z.infer<typeof mediaKindSchema>;
 
-export type RankedMediaAsset = MediaAsset & {
-  matchScore: number;
-  matchReasons: string[];
-  recommended: boolean;
-};
+export type RankedMediaAsset = MediaAsset & { matchScore: number; matchReasons: string[]; recommended: boolean };
 
 export const searchMediaAssets = createServerFn({ method: "POST" })
   .validator(z.object({
@@ -25,9 +22,7 @@ export const searchMediaAssets = createServerFn({ method: "POST" })
     perPage: z.number().int().min(1).max(20).default(8),
     kind: mediaKindSchema.default("image"),
   }))
-  .handler(async ({ data }) => ({
-    results: await searchMedia(data.query, data.providers, data.perPage, data.kind),
-  }));
+  .handler(async ({ data }) => ({ results: await searchMedia(data.query, data.providers, data.perPage, data.kind) }));
 
 export const searchMediaForShot = createServerFn({ method: "POST" })
   .validator(z.object({
@@ -37,24 +32,24 @@ export const searchMediaForShot = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }) => {
     const query = buildMediaQuery(data.shot);
-    const kind = data.shot.asset_type === "video" ? "video" : "image";
+    const kinds: MediaKind[] =
+      data.shot.asset_type === "video" ? ["video"] :
+      data.shot.asset_type === "mixed" ? ["video", "image"] : ["image"];
     const orientation = inferOrientation(data.shot.composition);
-    const results = await searchMedia(query, data.providers, data.perPage, kind, orientation);
-    return {
-      query,
-      kind,
-      orientation,
-      results: results.map(result => ({
-        ...result,
-        assets: rankAssets(result.assets, data.shot, query),
-      })),
-    };
+    const grouped = await Promise.all(
+      kinds.map((kind) => searchMedia(query, data.providers, data.perPage, kind, orientation)),
+    );
+    const results = grouped.flat().map((result) => ({
+      ...result,
+      assets: rankAssets(result.assets, data.shot, query),
+    }));
+    return { query, kind: data.shot.asset_type, orientation, results };
   });
 
 function buildMediaQuery(shot: z.infer<typeof shotSchema>): string {
   const source = [shot.action, shot.shot_type, shot.composition, shot.image_prompt].filter(Boolean).join(" ");
   const cleaned = source.replace(/\[[^\]]+\]/g, " ").replace(/\([^)]*\)/g, " ").replace(/[{}|]/g, " ").replace(/\s+/g, " ").trim();
-  return cleaned.split(/\s+/).filter(word => word.length > 2).slice(0, 24).join(" ").slice(0, 200) || "cinematic scene";
+  return cleaned.split(/\s+/).filter((word) => word.length > 2).slice(0, 24).join(" ").slice(0, 200) || "cinematic scene";
 }
 
 function inferOrientation(composition: string): "portrait" | "landscape" | "square" | undefined {
@@ -68,30 +63,28 @@ function inferOrientation(composition: string): "portrait" | "landscape" | "squa
 function rankAssets(assets: MediaAsset[], shot: z.infer<typeof shotSchema>, query: string): RankedMediaAsset[] {
   const targetTokens = tokenize([shot.action, shot.shot_type, shot.composition, shot.image_prompt, query].join(" "));
   const targetOrientation = inferOrientation(shot.composition);
-  const desiredKind = shot.asset_type === "video" ? "video" : "image";
+  const desiredKind = shot.asset_type === "video" ? "video" : shot.asset_type === "image" ? "image" : undefined;
 
-  return assets
-    .map(asset => {
-      const searchable = tokenize([asset.title, ...(asset.tags ?? []), asset.author ?? ""].join(" "));
-      const overlap = [...targetTokens].filter(token => searchable.has(token)).length;
-      const semanticScore = Math.min(55, overlap * 11);
-      const orientationScore = targetOrientation && asset.width && asset.height ? orientationMatch(targetOrientation, asset.width, asset.height) : 0;
-      const typeScore = asset.type === desiredKind ? 15 : 0;
-      const resolutionScore = asset.width && asset.height && Math.max(asset.width, asset.height) >= 1080 ? 10 : 4;
-      const score = Math.min(100, semanticScore + orientationScore + typeScore + resolutionScore);
-      const reasons: string[] = [];
-      if (overlap > 0) reasons.push(`${overlap} sinais semânticos coincidem`);
-      if (orientationScore >= 12) reasons.push("formato visual compatível");
-      if (typeScore > 0) reasons.push(`tipo ${desiredKind} compatível`);
-      if (resolutionScore >= 10) reasons.push("resolução adequada para produção");
-      return { ...asset, matchScore: score, matchReasons: reasons.length ? reasons : ["resultado relevante do fornecedor"], recommended: false };
-    })
-    .sort((a, b) => b.matchScore - a.matchScore)
-    .map((asset, index) => ({ ...asset, recommended: index === 0 && asset.matchScore >= 45 }));
+  return assets.map((asset) => {
+    const searchable = tokenize([asset.title, ...(asset.tags ?? []), asset.author ?? ""].join(" "));
+    const overlap = [...targetTokens].filter((token) => searchable.has(token)).length;
+    const semanticScore = Math.min(55, overlap * 11);
+    const orientationScore = targetOrientation && asset.width && asset.height ? orientationMatch(targetOrientation, asset.width, asset.height) : 0;
+    const typeScore = desiredKind ? (asset.type === desiredKind ? 15 : 0) : 8;
+    const resolutionScore = asset.width && asset.height && Math.max(asset.width, asset.height) >= 1080 ? 10 : 4;
+    const score = Math.min(100, semanticScore + orientationScore + typeScore + resolutionScore);
+    const reasons: string[] = [];
+    if (overlap > 0) reasons.push(`${overlap} sinais semânticos coincidem`);
+    if (orientationScore >= 12) reasons.push("formato visual compatível");
+    if (desiredKind && typeScore > 0) reasons.push(`tipo ${desiredKind} compatível`);
+    if (!desiredKind) reasons.push("tipo compatível com plano misto");
+    if (resolutionScore >= 10) reasons.push("resolução adequada para produção");
+    return { ...asset, matchScore: score, matchReasons: reasons.length ? reasons : ["resultado relevante do fornecedor"], recommended: false };
+  }).sort((a, b) => b.matchScore - a.matchScore).map((asset, index) => ({ ...asset, recommended: index === 0 && asset.matchScore >= 45 }));
 }
 
 function tokenize(value: string): Set<string> {
-  return new Set(value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).filter(token => token.length >= 4));
+  return new Set(value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).filter((token) => token.length >= 4));
 }
 
 function orientationMatch(orientation: "portrait" | "landscape" | "square", width: number, height: number): number {
