@@ -9,7 +9,6 @@ export const driftBridgeOperationSchema = z.discriminatedUnion("operation", [
 ]);
 
 export type DriftBridgeOperation = z.infer<typeof driftBridgeOperationSchema>;
-
 export const driftBridgeManifestSchema = z.object({
   version: z.literal(1),
   target: z.literal("drift"),
@@ -20,23 +19,13 @@ export const driftBridgeManifestSchema = z.object({
   fps: z.number().positive(),
   operations: z.array(driftBridgeOperationSchema).max(1000),
 });
-
 export type DriftBridgeManifest = z.infer<typeof driftBridgeManifestSchema>;
 
 export function buildDriftBridgeManifest(timeline: ProductionTimeline): DriftBridgeManifest {
   const operations: DriftBridgeOperation[] = [];
-
   for (const item of timeline.items) {
     if (item.assetUrl) {
-      operations.push({
-        operation: "import_media",
-        itemId: item.id,
-        url: item.assetUrl,
-        provider: item.provider,
-      });
-    }
-
-    if (item.assetId || item.assetUrl) {
+      operations.push({ operation: "import_media", itemId: item.id, url: item.assetUrl, provider: item.provider });
       operations.push({
         operation: "place_clip",
         itemId: item.id,
@@ -45,28 +34,23 @@ export function buildDriftBridgeManifest(timeline: ProductionTimeline): DriftBri
         durationSeconds: item.durationSeconds,
         track: item.track === "video" ? "video" : item.track === "audio" ? "audio" : "sfx",
       });
-    }
-
-    if (item.onScreenText.trim()) {
+    } else if (item.assetId && item.track !== "text") {
       operations.push({
-        operation: "add_text",
+        operation: "place_clip",
         itemId: item.id,
-        text: item.onScreenText,
+        sourceAssetId: item.assetId,
         startSeconds: item.startSeconds,
         durationSeconds: item.durationSeconds,
+        track: item.track === "audio" ? "audio" : item.track === "video" ? "video" : "sfx",
       });
     }
-
+    if (item.onScreenText.trim()) {
+      operations.push({ operation: "add_text", itemId: item.id, text: item.onScreenText, startSeconds: item.startSeconds, durationSeconds: item.durationSeconds });
+    }
     if (item.sfx.trim()) {
-      operations.push({
-        operation: "add_marker",
-        itemId: item.id,
-        label: item.sfx,
-        startSeconds: item.startSeconds,
-      });
+      operations.push({ operation: "add_marker", itemId: item.id, label: item.sfx, startSeconds: item.startSeconds });
     }
   }
-
   return driftBridgeManifestSchema.parse({
     version: 1,
     target: "drift",
