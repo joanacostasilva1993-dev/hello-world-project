@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 export const generationKindSchema = z.enum(["image", "video"]);
-
 export type AssetGenerationRequest = {
   kind: "image" | "video";
   prompt: string;
@@ -26,9 +25,10 @@ export const buildAssetGenerationRequest = createServerFn({ method: "POST" })
   .validator(z.object({
     shot: shotSchema,
     format: z.string().max(100).default("9:16 vertical"),
+    preferredKind: generationKindSchema.optional(),
   }))
   .handler(async ({ data }): Promise<AssetGenerationRequest> => {
-    const kind = data.shot.asset_type === "video" ? "video" : "image";
+    const kind = data.preferredKind ?? (data.shot.asset_type === "video" ? "video" : "image");
     const aspectRatio = inferAspectRatio(data.format, data.shot.composition);
     const prompt = kind === "video" ? data.shot.video_prompt : data.shot.image_prompt;
 
@@ -52,9 +52,5 @@ function inferAspectRatio(format: string, composition: string): AssetGenerationR
 }
 
 function cleanPrompt(value: string): string {
-  return value
-    .replace(/\s+/g, " ")
-    .replace(/^prompt\s*:\s*/i, "")
-    .trim()
-    .slice(0, 4000);
+  return value.replace(/\s+/g, " ").replace(/^prompt\s*:\s*/i, "").trim().slice(0, 4000);
 }
