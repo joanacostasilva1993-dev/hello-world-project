@@ -1,10 +1,10 @@
 import { z } from "zod";
 import type { DriftMcpExecutionPlan } from "./driftExecutor.functions";
-import { createDriftBridgeJob, type LocalBridgeJob } from "./localBridge.functions";
+import { createDriftBridgeJob, localBridgeJobSchema, type LocalBridgeJob } from "./localBridge.functions";
 
 export const driftExecutionSnapshotSchema = z.object({
   plan: z.unknown(),
-  job: z.unknown(),
+  job: localBridgeJobSchema,
 });
 
 export type DriftExecutionSnapshot = {
@@ -28,8 +28,11 @@ export function loadDriftExecutionSnapshot(): DriftExecutionSnapshot | null {
   if (!raw) return null;
 
   try {
-    const parsed = JSON.parse(raw) as DriftExecutionSnapshot;
-    return parsed;
+    const parsed: unknown = JSON.parse(raw);
+    const validated = driftExecutionSnapshotSchema.safeParse(parsed);
+    return validated.success
+      ? (validated.data as DriftExecutionSnapshot)
+      : null;
   } catch {
     return null;
   }
