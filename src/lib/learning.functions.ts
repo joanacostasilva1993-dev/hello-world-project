@@ -53,12 +53,19 @@ function avg(values: number[]) {
 }
 
 function safeRate(n?: number, d?: number) {
-  return n != null && d && d > 0 ? (n / d) * 100 : undefined;
+  return n != null && d != null && d > 0 ? (n / d) * 100 : undefined;
 }
 
 export function buildLearningReport(rows: PerformanceInput[]): LearningReport {
   const parsed = rows.map((row) => performanceInputSchema.parse(row));
-  const platform = parsed[0]?.platform ?? "youtube";
+  if (!parsed.length) throw new Error("É necessária pelo menos uma linha de desempenho.");
+
+  const platforms = new Set(parsed.map((row) => row.platform));
+  if (platforms.size > 1) {
+    throw new Error("Um learning report deve comparar conteúdos da mesma plataforma. Cria um relatório separado para cada plataforma.");
+  }
+
+  const platform = parsed[0].platform;
   const views = parsed.map((r) => r.views).filter((v): v is number => v != null);
   const retention = parsed.map((r) => r.retentionPercent).filter((v): v is number => v != null);
   const avgDuration = parsed.map((r) => r.averageViewDurationSeconds).filter((v): v is number => v != null);
@@ -78,22 +85,41 @@ export function buildLearningReport(rows: PerformanceInput[]): LearningReport {
   if (saveRates.length) signals.push({ name: "save_rate", value: avg(saveRates), unit: "%", interpretation: "Guardados relativos às visualizações, quando disponíveis." });
   if (followRates.length) signals.push({ name: "follow_conversion", value: avg(followRates), unit: "%", interpretation: "Seguidores ganhos relativos às visualizações, quando disponíveis." });
 
-  const medianViews = views.length ? [...views].sort((a,b)=>a-b)[Math.floor(views.length / 2)] : 0;
+  const sortedViews = [...views].sort((a, b) => a - b);
+  const medianViews = sortedViews.length ? sortedViews[Math.floor((sortedViews.length - 1) / 2)] : 0;
   const top = parsed.filter((r) => (r.views ?? 0) >= medianViews);
   const bottom = parsed.filter((r) => (r.views ?? 0) < medianViews);
-  const topRetention = avg(top.map(r=>r.retentionPercent).filter((v): v is number=>v!=null));
-  const bottomRetention = avg(bottom.map(r=>r.retentionPercent).filter((v): v is number=>v!=null));
+  const topRetention = avg(top.map((r) => r.retentionPercent).filter((v): v is number => v != null));
+  const bottomRetentionValues = bottom.map((r) => r.retentionPercent).filter((v): v is number => v != null);
+  const bottomRetention = avg(bottomRetentionValues);
 
   const strongestPatterns: string[] = [];
   const weakPatterns: string[] = [];
-  if (retention.length && topRetention > bottomRetention + 5) strongestPatterns.push("Conteúdos acima da mediana combinam-se com retenção superior à metade inferior da amostra.");
-  if (shareRates.length && avg(shareRates) > 1) strongestPatterns.push("A amostra apresenta sinal mensurável de partilha; testar temas que incentivem distribuição entre pares.");
-  if (saveRates.length && avg(saveRates) > 1) strongestPatterns.push("Existe sinal de conteúdo guardável; testar formatos de referência, listas ou explicações.");
-  if (parsed.some(r=>r.hookVariant)) strongestPatterns.push("Hooks estão identificados como variável experimental e podem ser comparados entre publicações.");
-  if (views.length && medianViews > 0) strongestPatterns.push("A mediana de visualizações pode servir como baseline interno para novos testes.");
+  if (retention.length && bottomRetentionValues.length && topRetention > bottomRetention + 5) {
+    strongestPatterns.push("Conteúdos acima da mediana combinam-se com retenção superior à metade inferior da amostra.");
+  }
+  if (shareRates.length && avg(shareRates) > 1) {
+    strongestPatterns.push("A amostra apresenta sinal mensurável de partilha; testar temas que incentivem distribuição entre pares.");
+  }
+  if (saveRates.length && avg(saveRates) > 1) {
+    strongestPatterns.push("Existe sinal de conteúdo guardável; testar formatos de referência, listas ou explicações.");
+  }
+  if (parsed.some((r) => r.hookVariant)) {
+    strongestPatterns.push("Hooks estão identificados como variável experimental e podem ser comparados entre publicações.");
+  }
+  if (views.length && medianViews > 0) {
+    strongestPatterns.push("A mediana de visualizações pode servir como baseline interno para novos testes.");
+  }
 
-  if (retention.length && topRetention && bottomRetention && topRetention < bottomRetention + 3) weakPatterns.push("A amostra não mostra diferença clara de retenção entre metade superior e inferior.");
-  if (parsed.length < 10) weakPatterns.push("A amostra ainda é pequena para conclusões fortes.");
+  if (retention.length && bottomRetentionValues.length && topRetention < bottomRetention + 3) {
+    weakPatterns.push("A amostra não mostra diferença clara de retenção entre metade superior e inferior.");
+  }
+  if (!bottom.length && views.length) {
+    weakPatterns.push("Todos os conteúdos estão na metade superior por terem visualizações iguais ou muito próximas; a comparação por mediana é pouco discriminativa.");
+  }
+  if (parsed.length < 10) {
+    weakPatterns.push("A amostra ainda é pequena para conclusões fortes.");
+  }
 
   const experimentsToRun = [
     "Testar dois hooks para o mesmo conceito, mantendo duração e promessa semelhantes.",
