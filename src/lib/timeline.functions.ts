@@ -82,47 +82,92 @@ export function buildProductionTimeline(
   let cursor = 0;
 
   scenes.forEach((scene, sceneIndex) => {
-    const sceneShots = shots.filter((shot) => String(shot.scene) === String(sceneIndex + 1));
-    const fallbackDuration = sceneShots.length ? 5 / sceneShots.length : 5;
+    const sceneId = `scene-${sceneIndex + 1}`;
+    const sceneShots = shots
+      .map((shot, shotIndex) => ({ shot, shotIndex }))
+      .filter(({ shot }) => String(shot.scene) === String(sceneIndex + 1));
+
     const sceneStart = parseTime(scene.time, cursor);
-    const sceneDuration = Math.max(
-      fallbackDuration,
-      sceneShots.length
-        ? Math.max(...sceneShots.map((shot) => durationFromRange(shot.time, sceneStart).duration))
-        : fallbackDuration,
-    );
+    const fallbackShotDuration = sceneShots.length ? 5 / sceneShots.length : 5;
 
-    const primaryShot = sceneShots[0];
-    const selected = selectedAssets[sceneIndex];
-    const generation = generationQueue[sceneIndex];
+    sceneShots.forEach(({ shot, shotIndex }, localIndex) => {
+      const fallbackStart = sceneStart + localIndex * fallbackShotDuration;
+      const range = durationFromRange(shot.time, fallbackStart);
+      const selected = selectedAssets[shotIndex];
+      const generation = generationQueue[shotIndex];
 
-    items.push({
-      id: `scene-${sceneIndex + 1}-video`,
-      sceneId: `scene-${sceneIndex + 1}`,
-      order: items.length,
-      startSeconds: sceneStart,
-      durationSeconds: sceneDuration,
-      track: "video",
-      visual: primaryShot?.action || scene.visual,
-      narration: scene.narration,
-      onScreenText: scene.on_screen_text,
-      sfx: "",
-      transition: scene.transition,
-      camera: primaryShot?.camera || "",
-      assetSource: selected ? "selected-media" : generation ? "generated" : "none",
-      assetId: selected?.id,
-      assetUrl: selected?.url,
-      provider: selected?.provider,
-      generationKind: generation?.kind,
+      items.push({
+        id: `${sceneId}-shot-${shotIndex + 1}`,
+        sceneId,
+        order: items.length,
+        startSeconds: range.start,
+        durationSeconds: range.duration,
+        track: "video",
+        visual: shot.action || scene.visual,
+        narration: "",
+        onScreenText: "",
+        sfx: "",
+        transition: shotIndex === sceneShots[sceneShots.length - 1]?.shotIndex ? scene.transition : "",
+        camera: shot.camera || "",
+        assetSource: selected ? "selected-media" : generation ? "generated" : "none",
+        assetId: selected?.id,
+        assetUrl: selected?.url,
+        provider: selected?.provider,
+        generationKind: generation?.kind,
+      });
     });
+
+    const sceneEnd = sceneShots.length
+      ? Math.max(...sceneShots.map(({ shot }, index) => {
+          const fallbackStart = sceneStart + index * fallbackShotDuration;
+          const range = durationFromRange(shot.time, fallbackStart);
+          return range.start + range.duration;
+        }))
+      : sceneStart + 5;
+
+    if (scene.narration.trim()) {
+      items.push({
+        id: `${sceneId}-voice`,
+        sceneId,
+        order: items.length,
+        startSeconds: sceneStart,
+        durationSeconds: Math.max(0.5, sceneEnd - sceneStart),
+        track: "audio",
+        visual: "",
+        narration: scene.narration,
+        onScreenText: "",
+        sfx: "",
+        transition: "",
+        camera: "",
+        assetSource: "none",
+      });
+    }
+
+    if (scene.on_screen_text.trim()) {
+      items.push({
+        id: `${sceneId}-text`,
+        sceneId,
+        order: items.length,
+        startSeconds: sceneStart,
+        durationSeconds: Math.max(0.5, sceneEnd - sceneStart),
+        track: "text",
+        visual: "",
+        narration: "",
+        onScreenText: scene.on_screen_text,
+        sfx: "",
+        transition: "",
+        camera: "",
+        assetSource: "none",
+      });
+    }
 
     if (scene.sfx.trim()) {
       items.push({
-        id: `scene-${sceneIndex + 1}-sfx`,
-        sceneId: `scene-${sceneIndex + 1}`,
+        id: `${sceneId}-sfx`,
+        sceneId,
         order: items.length,
         startSeconds: sceneStart,
-        durationSeconds: sceneDuration,
+        durationSeconds: Math.max(0.5, Math.min(5, sceneEnd - sceneStart)),
         track: "sfx",
         visual: "",
         narration: "",
@@ -134,7 +179,7 @@ export function buildProductionTimeline(
       });
     }
 
-    cursor = Math.max(cursor + sceneDuration, sceneStart + sceneDuration);
+    cursor = Math.max(cursor, sceneEnd);
   });
 
   return productionTimelineSchema.parse({
