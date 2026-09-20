@@ -1,41 +1,116 @@
 import { z } from "zod";
 import type { DriftMcpExecutionPlan } from "./driftExecutor.functions";
 
-export const localBridgeJobStatusSchema = z.enum(["queued","running","completed","partial","failed","cancelled"]);
+export const localBridgeJobStatusSchema = z.enum([
+  "queued",
+  "running",
+  "completed",
+  "partial",
+  "failed",
+  "cancelled",
+]);
+
 export const localBridgeJobSchema = z.object({
-  id:z.string().min(1).max(120), type:z.literal("drift-execution"), status:localBridgeJobStatusSchema,
-  createdAt:z.string().datetime(), updatedAt:z.string().datetime(), planVersion:z.literal(1),
-  projectId:z.string().min(1).max(120), title:z.string().max(300),
-  currentStep:z.number().int().nonnegative(), totalSteps:z.number().int().nonnegative(), error:z.string().max(2000).optional()
+  id: z.string().min(1).max(120),
+  type: z.literal("drift-execution"),
+  status: localBridgeJobStatusSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  planVersion: z.literal(1),
+  projectId: z.string().min(1).max(120),
+  title: z.string().max(300),
+  currentStep: z.number().int().nonnegative(),
+  totalSteps: z.number().int().nonnegative(),
+  mode: z.enum(["dry-run", "drift-mcp"]).optional(),
+  currentOperation: z.string().max(120).optional(),
+  error: z.string().max(2000).optional(),
+  warnings: z.array(z.string().max(500)).max(50).optional(),
 });
-export type LocalBridgeJob=z.infer<typeof localBridgeJobSchema>;
-export const localBridgeCommandSchema=z.discriminatedUnion("command",[
-  z.object({command:z.literal("health")}),z.object({command:z.literal("start"),plan:z.unknown()}),
-  z.object({command:z.literal("status"),jobId:z.string().min(1).max(120)}),z.object({command:z.literal("cancel"),jobId:z.string().min(1).max(120)})
-]);
-export type LocalBridgeCommand=z.infer<typeof localBridgeCommandSchema>;
-export const localBridgeResponseSchema=z.discriminatedUnion("type",[
-  z.object({type:z.literal("health"),bridgeVersion:z.string(),driftConnected:z.boolean(),capabilities:z.array(z.string())}),
-  z.object({type:z.literal("job"),job:localBridgeJobSchema}),
-  z.object({type:z.literal("error"),code:z.string(),message:z.string()})
-]);
-export type LocalBridgeResponse=z.infer<typeof localBridgeResponseSchema>;
-export const LOCAL_BRIDGE_VERSION="0.1.0";
-export const LOCAL_BRIDGE_DEFAULT_ORIGIN="http://127.0.0.1:4317";
 
-export function createDriftBridgeJob(plan:DriftMcpExecutionPlan):LocalBridgeJob{
- const now=new Date().toISOString();
- return localBridgeJobSchema.parse({id:`drift-job-${Date.now()}`,type:"drift-execution",status:"queued",createdAt:now,updatedAt:now,planVersion:plan.version,projectId:plan.projectId,title:plan.title,currentStep:0,totalSteps:plan.steps.length});
+export type LocalBridgeJob = z.infer<typeof localBridgeJobSchema>;
+
+export const localBridgeCommandSchema = z.discriminatedUnion("command", [
+  z.object({ command: z.literal("health") }),
+  z.object({ command: z.literal("start"), plan: z.unknown() }),
+  z.object({ command: z.literal("status"), jobId: z.string().min(1).max(120) }),
+  z.object({ command: z.literal("cancel"), jobId: z.string().min(1).max(120) }),
+]);
+
+export type LocalBridgeCommand = z.infer<typeof localBridgeCommandSchema>;
+
+export const localBridgeResponseSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("health"),
+    bridgeVersion: z.string(),
+    driftConnected: z.boolean(),
+    capabilities: z.array(z.string()),
+    mode: z.enum(["dry-run", "drift-mcp"]).optional(),
+    driftProtocol: z.string().nullable().optional(),
+    driftServer: z.unknown().nullable().optional(),
+  }),
+  z.object({ type: z.literal("job"), job: localBridgeJobSchema }),
+  z.object({ type: z.literal("error"), code: z.string(), message: z.string() }),
+]);
+
+export type LocalBridgeResponse = z.infer<typeof localBridgeResponseSchema>;
+
+export const LOCAL_BRIDGE_VERSION = "0.2.0";
+export const LOCAL_BRIDGE_DEFAULT_ORIGIN = "http://127.0.0.1:4317";
+
+export function createDriftBridgeJob(plan: DriftMcpExecutionPlan): LocalBridgeJob {
+  const now = new Date().toISOString();
+  return localBridgeJobSchema.parse({
+    id: `drift-job-${Date.now()}`,
+    type: "drift-execution",
+    status: "queued",
+    createdAt: now,
+    updatedAt: now,
+    planVersion: plan.version,
+    projectId: plan.projectId,
+    title: plan.title,
+    currentStep: 0,
+    totalSteps: plan.steps.length,
+    mode: "dry-run",
+  });
 }
 
-export async function callLocalBridge(command:LocalBridgeCommand,origin=LOCAL_BRIDGE_DEFAULT_ORIGIN):Promise<LocalBridgeResponse>{
- if(typeof window==="undefined") throw new Error("O Local Bridge só pode ser contactado a partir do browser.");
- const response=await fetch(`${origin}/v1/bridge`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(command)});
- let payload:unknown;
- try{payload=await response.json();}catch{throw new Error(`Local Bridge respondeu com HTTP ${response.status} sem JSON válido.`);}
- const parsed=localBridgeResponseSchema.safeParse(payload);
- if(!parsed.success) throw new Error("Resposta do Local Bridge não corresponde ao contrato ViralFlow.");
- if(!response.ok||parsed.data.type==="error") throw new Error(parsed.data.type==="error"?parsed.data.message:`Local Bridge HTTP ${response.status}.`);
- return parsed.data;
+export async function callLocalBridge(
+  command: LocalBridgeCommand,
+  origin = LOCAL_BRIDGE_DEFAULT_ORIGIN,
+): Promise<LocalBridgeResponse> {
+  if (typeof window === "undefined") {
+    throw new Error("O Local Bridge só pode ser contactado a partir do browser.");
+  }
+
+  const response = await fetch(`${origin}/v1/bridge`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(command),
+  });
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error(`Local Bridge respondeu com HTTP ${response.status} sem JSON válido.`);
+  }
+
+  const parsed = localBridgeResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error("Resposta do Local Bridge não corresponde ao contrato ViralFlow.");
+  }
+
+  if (!response.ok || parsed.data.type === "error") {
+    throw new Error(
+      parsed.data.type === "error"
+        ? parsed.data.message
+        : `Local Bridge HTTP ${response.status}.`,
+    );
+  }
+
+  return parsed.data;
 }
-export async function checkLocalBridge(origin=LOCAL_BRIDGE_DEFAULT_ORIGIN){return callLocalBridge({command:"health"},origin);}
+
+export async function checkLocalBridge(origin = LOCAL_BRIDGE_DEFAULT_ORIGIN) {
+  return callLocalBridge({ command: "health" }, origin);
+}
