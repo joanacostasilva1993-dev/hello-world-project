@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, Clipboard, Download, ExternalLink, FileJson, ListChecks, RefreshCw } from "lucide-react";
 import { buildDriftBridgeManifest, type DriftBridgeManifest } from "../lib/driftBridge.functions";
 import { buildDriftMcpExecutionPlan, type DriftMcpExecutionPlan } from "../lib/driftExecutor.functions";
-import { checkLocalBridge, callLocalBridge, LOCAL_BRIDGE_DEFAULT_ORIGIN, localBridgeJobSchema, type LocalBridgeJob } from "../lib/localBridge.functions";
+import { checkLocalBridge, callLocalBridge, localBridgeJobSchema, type LocalBridgeJob } from "../lib/localBridge.functions";
 import type { ProductionTimeline } from "../lib/timeline.functions";
 
 export const Route = createFileRoute("/drift")({ component: DriftBridgePage });
