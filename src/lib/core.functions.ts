@@ -34,6 +34,7 @@ export type ContentProject = z.infer<typeof contentProjectSchema>;
 
 export const eventTypeSchema = z.enum([
   "PROJECT_CREATED",
+  "RESEARCH_SOURCE_RESOLVED",
   "RESEARCH_COMPLETED",
   "IDEA_CREATED",
   "HOOK_READY",
