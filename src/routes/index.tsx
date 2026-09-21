@@ -20,7 +20,7 @@ import {
   X,
   Youtube,
 } from "lucide-react";
-import { useState } from "react";
+import { useState } from "react";\n\nimport { analyzeContentReference } from "@/lib/ai.functions";\n
 
 import { createEventBus } from "@/lib/eventBus.functions";
 import { runWorkflow } from "@/lib/workflowRuntime.functions";
