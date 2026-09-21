@@ -87,13 +87,15 @@ function Index() {
         { id: "research", type: "research.run", kind: "intelligence", label: "Resolve + analyze source", config: {} },
         { id: "patterns", type: "pattern.analyze", kind: "intelligence", label: "Pattern + content gap", config: {} },
         { id: "hooks", type: "hook.generate", kind: "generation", label: "Hook Engine", config: {} },
+        { id: "script", type: "script.generate", kind: "generation", label: "Script Engine", config: {} },
         { id: "originality", type: "originality.check", kind: "quality", label: "Originality readiness", config: {} },
       ],
       edges: [
         { id: "edge-input-research", from: "input", to: "research" },
         { id: "edge-research-patterns", from: "research", to: "patterns" },
         { id: "edge-patterns-hooks", from: "patterns", to: "hooks" },
-        { id: "edge-hooks-originality", from: "hooks", to: "originality" },
+        { id: "edge-hooks-script", from: "hooks", to: "script" },
+        { id: "edge-script-originality", from: "script", to: "originality" },
       ],
     };
 
@@ -268,6 +270,39 @@ function Index() {
                 output: { ...hooks.parsed, provider: hooks.provider, model: hooks.model, usage: hooks.usage },
                 eventType: "HOOK_READY",
                 eventPayload: { hookCount: hooks.parsed.hooks.length, provider: hooks.provider, model: hooks.model },
+              };
+            },
+            "script.generate": async (_node, context) => {
+              const opportunities = context.outputs.patterns?.opportunities as Array<Record<string, unknown>> | undefined;
+              const opportunity = opportunities?.[0];
+              const hookOutput = context.outputs.hooks as { hooks?: Array<Record<string, unknown>> } | undefined;
+              const selectedHook = hookOutput?.hooks?.[0];
+              if (!opportunity || !selectedHook) {
+                return {
+                  output: { status: "awaiting-hook-and-opportunity" },
+                  eventType: "SCRIPT_READY",
+                  eventPayload: { status: "awaiting-hook-and-opportunity" },
+                };
+              }
+              const { generateScript } = await import("@/lib/scripts.functions");
+              const script = await generateScript({
+                data: {
+                  concept: String(opportunity.concept ?? ""),
+                  angle: String(opportunity.whyDistinct ?? ""),
+                  promise: String(selectedHook.promise ?? ""),
+                  audience: "Audiência a definir no projeto",
+                  format: "short-form vertical",
+                  hook: String(selectedHook.text ?? ""),
+                  targetSeconds: 60,
+                  wordsPerMinute: 150,
+                  learningContext: { strongestPatterns: [], weakPatterns: [], experimentsToRun: [] },
+                  route: "balanced",
+                },
+              });
+              return {
+                output: { script: script.parsed, timing: script.timing, provider: script.provider, model: script.model, usage: script.usage },
+                eventType: "SCRIPT_READY",
+                eventPayload: { targetSeconds: script.timing.targetSeconds, targetWords: script.timing.targetWords, actualNarrationWords: script.timing.actualNarrationWords, provider: script.provider, model: script.model },
               };
             },
             "originality.check": async (_node, context) => ({
@@ -446,7 +481,7 @@ function Index() {
                     </span>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                    {(["input", "research", "patterns", "hooks", "originality"] as const).map((nodeId) => (
+                    {(["input", "research", "patterns", "hooks", "script", "originality"] as const).map((nodeId) => (
                       <div key={nodeId} className="rounded-xl border border-border bg-background p-3">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{nodeId}</p>
                         <p className="mt-1 text-xs font-black">{nodeStatuses[nodeId] ?? "queued"}</p>
