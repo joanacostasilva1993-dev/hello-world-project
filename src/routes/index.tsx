@@ -67,6 +67,7 @@ function Index() {
   const [nodeStatuses, setNodeStatuses] = useState<Record<string, string>>({});
   const [eventCount, setEventCount] = useState(0);
   const [intelligence, setIntelligence] = useState<Record<string, unknown> | null>(null);
+  const [hooks, setHooks] = useState<Array<Record<string, unknown>>>([]);
 
   async function runReferenceAnalysis() {
     setIsRunning(true);
@@ -75,6 +76,7 @@ function Index() {
     setNodeStatuses({});
     setEventCount(0);
     setIntelligence(null);
+    setHooks([]);
 
     const workflow: Workflow = {
       id: "reference-intelligence-v2",
@@ -276,7 +278,9 @@ function Index() {
       );
 
       const researchOutput = result.context.outputs.research as { intelligence?: Record<string, unknown> } | undefined;
+      const hookOutput = result.context.outputs.hooks as { hooks?: Array<Record<string, unknown>> } | undefined;
       setIntelligence(researchOutput?.intelligence ?? null);
+      setHooks(hookOutput?.hooks ?? []);
       setRunStatus(result.run.status === "completed" ? "completed" : "failed");
       setAnalyzed(result.run.status === "completed");
       setEventCount(result.context.events.length);
@@ -453,12 +457,39 @@ function Index() {
               )}
 
               {analyzed ? (
+                <>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <InsightCard label="Hook" value={String(intelligence?.hook ?? intelligence?.channel_positioning ?? "Não extraído")} detail={String(intelligence?.promise ?? intelligence?.audience_signal ?? "Sinal da fonte")} />
                   <InsightCard label="Estrutura" value={String(intelligence?.narrative_pattern ?? "Em análise")} detail={Array.isArray(intelligence?.content_pillars) ? intelligence.content_pillars.slice(0, 2).join(" · ") : "Padrão narrativo observado"} />
                   <InsightCard label="Visual DNA" value={Array.isArray(intelligence?.visual_signals) ? String(intelligence.visual_signals.length) + " sinais" : "Ainda não extraído"} detail={Array.isArray(intelligence?.visual_signals) ? intelligence.visual_signals.slice(0, 2).join(" · ") : "Requer análise multimodal"} />
                   <InsightCard label="Oportunidades" value={Array.isArray(intelligence?.opportunities) ? String(intelligence.opportunities.length) : Array.isArray(intelligence?.opportunity_signals) ? String(intelligence.opportunity_signals.length) : "0"} detail={Array.isArray(intelligence?.opportunities) ? intelligence.opportunities.slice(0, 2).join(" · ") : Array.isArray(intelligence?.opportunity_signals) ? intelligence.opportunity_signals.slice(0, 2).join(" · ") : "Sem oportunidades calculadas"} />
                 </div>
+                {hooks.length > 0 && (
+                  <div className="mt-5 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Hook Engine 2.0</p>
+                        <p className="mt-1 text-sm font-black">Hooks gerados com rastreabilidade</p>
+                      </div>
+                      <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[10px] font-bold">{hooks.length} variantes</span>
+                    </div>
+                    <div className="mt-3 grid gap-2 md:grid-cols-2">
+                      {hooks.slice(0, 8).map((hook, index) => (
+                        <div key={String(hook.id ?? index)} className="rounded-xl border border-border bg-background p-3">
+                          <p className="text-xs font-bold leading-5">{String(hook.text ?? "")}</p>
+                          <div className="mt-2 flex flex-wrap gap-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                            <span>{String(hook.mechanism ?? "")}</span>
+                            <span>•</span>
+                            <span>{String(hook.testVariantGroup ?? "A/B")}</span>
+                            <span>•</span>
+                            <span>{Math.round(Number(hook.confidence ?? 0) * 100)}% confiança</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                </>
               ) : (
                 <div className="mt-5 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-center">
                   <BrainCircuit className="mx-auto size-6 text-muted-foreground" />
