@@ -58,6 +58,7 @@ function Index() {
   const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
   const [nodeStatuses, setNodeStatuses] = useState<Record<string, string>>({});
   const [eventCount, setEventCount] = useState(0);
+  const [intelligence, setIntelligence] = useState<Record<string, unknown> | null>(null);
 
   async function runReferenceAnalysis() {
     setIsRunning(true);
@@ -65,6 +66,7 @@ function Index() {
     setAnalyzed(false);
     setNodeStatuses({});
     setEventCount(0);
+    setIntelligence(null);
 
     const workflow: Workflow = {
       id: "reference-intelligence-v2",
@@ -148,6 +150,8 @@ function Index() {
         },
       );
 
+      const researchOutput = result.context.outputs.research as { intelligence?: Record<string, unknown> } | undefined;
+      setIntelligence(researchOutput?.intelligence ?? null);
       setRunStatus(result.run.status === "completed" ? "completed" : "failed");
       setAnalyzed(result.run.status === "completed");
       setEventCount(result.context.events.length);
@@ -325,10 +329,10 @@ function Index() {
 
               {analyzed ? (
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <InsightCard label="Hook" value="Detectado" detail="Promessa / curiosidade" />
-                  <InsightCard label="Estrutura" value="Mapeada" detail="Abertura → desenvolvimento → payoff" />
-                  <InsightCard label="Visual DNA" value="Pendente" detail="Extração multimodal" />
-                  <InsightCard label="Retenção" value="Pendente" detail="Dados reais do vídeo" />
+                  <InsightCard label="Hook" value={String(intelligence?.hook ?? intelligence?.channel_positioning ?? "Não extraído")} detail={String(intelligence?.promise ?? intelligence?.audience_signal ?? "Sinal da fonte")} />
+                  <InsightCard label="Estrutura" value={String(intelligence?.narrative_pattern ?? "Em análise")} detail={Array.isArray(intelligence?.content_pillars) ? intelligence.content_pillars.slice(0, 2).join(" · ") : "Padrão narrativo observado"} />
+                  <InsightCard label="Visual DNA" value={Array.isArray(intelligence?.visual_signals) ? String(intelligence.visual_signals.length) + " sinais" : "Ainda não extraído"} detail={Array.isArray(intelligence?.visual_signals) ? intelligence.visual_signals.slice(0, 2).join(" · ") : "Requer análise multimodal"} />
+                  <InsightCard label="Oportunidades" value={Array.isArray(intelligence?.opportunities ?? intelligence?.opportunity_signals) ? String((intelligence?.opportunities ?? intelligence?.opportunity_signals as unknown[]).length) : "0"} detail={Array.isArray(intelligence?.opportunities) ? intelligence.opportunities.slice(0, 2).join(" · ") : Array.isArray(intelligence?.opportunity_signals) ? intelligence.opportunity_signals.slice(0, 2).join(" · ") : "Sem oportunidades calculadas"} />
                 </div>
               ) : (
                 <div className="mt-5 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-center">
