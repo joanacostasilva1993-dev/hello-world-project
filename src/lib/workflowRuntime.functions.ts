@@ -24,6 +24,7 @@ export const workflowNodeExecutionResultSchema = z.object({
       "PROJECT_CREATED",
       "RESEARCH_SOURCE_RESOLVED",
       "RESEARCH_COMPLETED",
+      "PATTERN_ANALYSIS_COMPLETED",
       "IDEA_CREATED",
       "HOOK_READY",
       "SCRIPT_READY",
