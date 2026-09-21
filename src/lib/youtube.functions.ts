@@ -13,7 +13,7 @@ export const youtubeReferenceSchema = z.object({
   url: z.string().url(),
 });
 
-function parseYouTubeUrl(url: string): { kind: "video"; videoId: string } | { kind: "channelHandle"; handle: string } | { kind: "channelId"; channelId: string } {
+export function parseYouTubeUrl(url: string): { kind: "video"; videoId: string } | { kind: "channelHandle"; handle: string } | { kind: "channelId"; channelId: string } {
   const parsed = new URL(url);
   const host = parsed.hostname.replace(/^www\\./, "").toLowerCase();
   if (host === "youtu.be") {
