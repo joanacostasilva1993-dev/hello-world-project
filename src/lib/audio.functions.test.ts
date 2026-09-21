@@ -5,6 +5,7 @@ import {
   captionsToSrt,
   buildCaptionsFromWords,
   validateAudioWords,
+  alignScriptScenesToAudio,
 } from "./audio.functions";
 
 describe("Audio Intelligence", () => {
@@ -60,6 +61,31 @@ describe("Audio Intelligence", () => {
       "Agora continua.",
     ]);
     expect(timeline.provider).toBe("external-audio");
+  });
+
+  it("aligns script scenes to the actual spoken timestamps", () => {
+    const aligned = alignScriptScenesToAudio(
+      [
+        { sceneId: "scene-1", narration: "Isto é um teste." },
+        { sceneId: "scene-2", narration: "Agora continua." },
+      ],
+      words,
+    );
+
+    expect(aligned[0]).toMatchObject({
+      sceneId: "scene-1",
+      startSeconds: 0,
+      endSeconds: 1.5,
+      matchedWordCount: 4,
+    });
+    expect(aligned[1]).toMatchObject({
+      sceneId: "scene-2",
+      startSeconds: 1.6,
+      endSeconds: 2.6,
+      matchedWordCount: 2,
+    });
+    expect(aligned[0].alignmentConfidence).toBe(1);
+    expect(aligned[1].alignmentConfidence).toBe(1);
   });
 
   it("rejects overlapping words", () => {
