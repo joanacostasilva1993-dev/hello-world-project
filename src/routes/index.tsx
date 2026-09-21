@@ -23,6 +23,7 @@ import {
 import { useState } from "react";
 
 import { analyzeChannelIntelligence, analyzeContentReference } from "@/lib/ai.functions";
+import { analyzeContentGap } from "@/lib/patterns.functions";
 import { resolveYouTubeReference } from "@/lib/youtube.functions";
 import { buildReferenceEvidence, appendDecision } from "@/lib/referenceIntelligence.functions";
 import { createEvent } from "@/lib/core.functions";
@@ -80,11 +81,13 @@ function Index() {
       nodes: [
         { id: "input", type: "project.input", label: "Reference input" },
         { id: "research", type: "research.run", label: "Resolve + analyze source" },
+        { id: "patterns", type: "pattern.analyze", label: "Pattern + content gap" },
         { id: "originality", type: "originality.check", label: "Originality readiness" },
       ],
       edges: [
         { from: "input", to: "research" },
-        { from: "research", to: "originality" },
+        { from: "research", to: "patterns" },
+        { from: "patterns", to: "originality" },
       ],
     };
 
@@ -172,6 +175,51 @@ function Index() {
                 output: { source: resolved, intelligence: analysis.parsed, referenceIntelligence: appendDecision(sourceFacts, { decision: "Use Channel DNA as the operational source for downstream ideation", rationale: "Structured analysis produced from a bounded sample of recent uploads", evidenceIds: sourceFacts.evidence.map((item) => item.id), confidence: resolved.videos.length >= 8 ? 0.8 : 0.6, alternatives: ["Expand sample before treating patterns as stable"] }), provider: analysis.provider, model: analysis.model, usage: analysis.usage },
                 eventType: "RESEARCH_COMPLETED",
                 eventPayload: { sourceKind: "channel", provider: analysis.provider, model: analysis.model, channelDna: analysis.parsed },
+              };
+            },
+            "pattern.analyze": async (_node, context) => {
+              const source = context.outputs.research?.source as
+                | { kind: "channel"; videos: Array<Record<string, unknown>> }
+                | { kind: "video" }
+                | undefined;
+              if (!source || source.kind !== "channel" || source.videos.length < 2) {
+                return {
+                  output: {
+                    status: "awaiting-multi-reference-sample",
+                    reason: "Pattern Engine requires at least two reference videos.",
+                  },
+                  eventType: "PATTERN_ANALYSIS_COMPLETED",
+                  eventPayload: { status: "awaiting-multi-reference-sample" },
+                };
+              }
+              const pattern = await analyzeContentGap({
+                data: {
+                  referenceVideos: source.videos.map((video) => ({
+                    id: String(video.id ?? ""),
+                    title: String(video.title ?? ""),
+                    description: String(video.description ?? ""),
+                    publishedAt: String(video.publishedAt ?? ""),
+                    duration: typeof video.duration === "string" ? video.duration : undefined,
+                    tags: Array.isArray(video.tags) ? video.tags.map(String) : [],
+                    viewCount: typeof video.viewCount === "number" ? video.viewCount : undefined,
+                    likeCount: typeof video.likeCount === "number" ? video.likeCount : undefined,
+                    commentCount: typeof video.commentCount === "number" ? video.commentCount : undefined,
+                    engagementRate: typeof video.engagementRate === "number" ? video.engagementRate : undefined,
+                    estimatedViewsPerDay: typeof video.estimatedViewsPerDay === "number" ? video.estimatedViewsPerDay : undefined,
+                  })),
+                  route: "balanced",
+                },
+              });
+              eventBus.publish(createEvent("PATTERN_ANALYSIS_COMPLETED", "viralflow-command-center", "pattern.analyze", {
+                contentGaps: pattern.parsed.content_gaps,
+                ideaCount: pattern.parsed.testable_ideas.length,
+                provider: pattern.provider,
+                model: pattern.model,
+              }));
+              return {
+                output: { pattern: pattern.parsed, provider: pattern.provider, model: pattern.model, usage: pattern.usage },
+                eventType: "PATTERN_ANALYSIS_COMPLETED",
+                eventPayload: { contentGaps: pattern.parsed.content_gaps, ideaCount: pattern.parsed.testable_ideas.length },
               };
             },
             "originality.check": async (_node, context) => ({
@@ -348,7 +396,7 @@ function Index() {
                     </span>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                    {(["input", "research", "originality"] as const).map((nodeId) => (
+                    {(["input", "research", "patterns", "originality"] as const).map((nodeId) => (
                       <div key={nodeId} className="rounded-xl border border-border bg-background p-3">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{nodeId}</p>
                         <p className="mt-1 text-xs font-black">{nodeStatuses[nodeId] ?? "queued"}</p>
