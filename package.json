@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "bridge": "node bridge/local-bridge.mjs"
+    "bridge": "node bridge/local-bridge.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -85,6 +87,7 @@
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
-    "vite": "8.1.5"
+    "vite": "8.1.5",
+    "vitest": "^3.2.4"
   }
 }
