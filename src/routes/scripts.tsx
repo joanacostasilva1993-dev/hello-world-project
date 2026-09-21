@@ -37,6 +37,7 @@ function ScriptsPage() {
   const [selected, setSelected] = useState<SavedIdea | null>(null);
   const [hook, setHook] = useState("");
   const [duration, setDuration] = useState(60);
+  const [wpm, setWpm] = useState(150);
   const [script, setScript] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -91,7 +92,8 @@ function ScriptsPage() {
           audience: selected.audience,
           format: selected.format,
           hook: hook.trim(),
-          durationSeconds: duration,
+          targetSeconds: duration,
+          wordsPerMinute: wpm,
           learningContext,
           route: "balanced",
         },
@@ -226,7 +228,7 @@ function ScriptsPage() {
                     htmlFor="script-duration"
                     className="block text-xs font-bold uppercase tracking-wider text-muted-foreground"
                   >
-                    Duração alvo · {duration}s
+                    Duração alvo · {duration >= 60 ? `${Math.floor(duration / 60)}m ${duration % 60}s` : `${duration}s`}
                   </label>
                   <input
                     id="script-duration"
@@ -278,7 +280,7 @@ function ScriptsPage() {
                     {String(script.logline ?? "")}
                   </p>
                   <div className="mt-3 inline-flex rounded-full bg-background px-3 py-1.5 text-[10px] font-bold">
-                    {String(script.estimated_duration_seconds ?? duration)}s estimados
+                    {String((script.duration as { targetSeconds?: number } | undefined)?.targetSeconds ?? duration)}s alvo
                   </div>
                 </div>
 
