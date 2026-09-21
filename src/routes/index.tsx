@@ -24,6 +24,7 @@ import { useState } from "react";
 
 import { analyzeChannelIntelligence, analyzeContentReference } from "@/lib/ai.functions";
 import { resolveYouTubeReference } from "@/lib/youtube.functions";
+import { buildReferenceEvidence, appendDecision } from "@/lib/referenceIntelligence.functions";
 
 
 import { createEventBus } from "@/lib/eventBus.functions";
@@ -108,8 +109,34 @@ function Index() {
               eventType: "PROJECT_CREATED",
               eventPayload: { referenceUrl, mode: analysisMode },
             }),
-            "research.run": async () => {
+            "research.run": async (_node, context) => {
               const resolved = await resolveYouTubeReference({ data: { mode: analysisMode, url: referenceUrl } });
+              const sourceFacts = resolved.kind === "video"
+                ? buildReferenceEvidence({
+                    sourceType: "video",
+                    sourceUrl: resolved.sourceUrl,
+                    facts: [
+                      { statement: `Título: ${resolved.video.title}`, source: resolved.sourceUrl, basis: "YouTube Data API metadata" },
+                      { statement: `Canal: ${resolved.video.channelTitle}`, source: resolved.sourceUrl, basis: "YouTube Data API metadata" },
+                      ...(resolved.video.viewCount !== undefined ? [{ statement: `Visualizações: ${resolved.video.viewCount}`, source: resolved.sourceUrl, basis: "YouTube Data API metadata" }] : []),
+                    ],
+                    limitations: ["Metadata pública não equivale a observar o conteúdo audiovisual completo."],
+                  })
+                : buildReferenceEvidence({
+                    sourceType: "channel",
+                    sourceUrl: resolved.sourceUrl,
+                    facts: [
+                      { statement: `Canal: ${resolved.channel.title}`, source: resolved.sourceUrl, basis: "YouTube Data API metadata" },
+                      { statement: `Amostra analisada: ${resolved.videos.length} vídeos`, source: resolved.sourceUrl, basis: "YouTube uploads playlist" },
+                    ],
+                    limitations: ["A amostra não representa necessariamente todo o histórico do canal."],
+                  });
+              eventBus.publish(createEvent("RESEARCH_SOURCE_RESOLVED", "viralflow-command-center", "research.run", {
+                sourceType: resolved.kind,
+                sourceUrl: resolved.sourceUrl,
+                evidenceCount: sourceFacts.evidence.length,
+              }));
+
               if (resolved.kind === "video") {
                 const analysis = await analyzeContentReference({ data: {
                   title: resolved.video.title,
@@ -129,7 +156,7 @@ function Index() {
                   },
                 } });
                 return {
-                  output: { source: resolved, intelligence: analysis.parsed, provider: analysis.provider, model: analysis.model, usage: analysis.usage },
+                  output: { source: resolved, intelligence: analysis.parsed, referenceIntelligence: appendDecision(sourceFacts, { decision: "Use Content DNA as the operational source for downstream ideation", rationale: "Structured analysis produced from resolved YouTube metadata", evidenceIds: sourceFacts.evidence.map((item) => item.id), confidence: 0.8, alternatives: ["Require multimodal video inspection before visual conclusions"] }), provider: analysis.provider, model: analysis.model, usage: analysis.usage },
                   eventType: "RESEARCH_COMPLETED",
                   eventPayload: { sourceKind: "video", provider: analysis.provider, model: analysis.model, contentDna: analysis.parsed },
                 };
@@ -141,7 +168,7 @@ function Index() {
                 route: "balanced",
               } });
               return {
-                output: { source: resolved, intelligence: analysis.parsed, provider: analysis.provider, model: analysis.model, usage: analysis.usage },
+                output: { source: resolved, intelligence: analysis.parsed, referenceIntelligence: appendDecision(sourceFacts, { decision: "Use Channel DNA as the operational source for downstream ideation", rationale: "Structured analysis produced from a bounded sample of recent uploads", evidenceIds: sourceFacts.evidence.map((item) => item.id), confidence: resolved.videos.length >= 8 ? 0.8 : 0.6, alternatives: ["Expand sample before treating patterns as stable"] }), provider: analysis.provider, model: analysis.model, usage: analysis.usage },
                 eventType: "RESEARCH_COMPLETED",
                 eventPayload: { sourceKind: "channel", provider: analysis.provider, model: analysis.model, channelDna: analysis.parsed },
               };
