@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { runOpenRouter, type AIRoute } from "./ai.server";
+import { runOmniRoute, runOpenRouter, type AIRequest, type AIRoute } from "./ai.server";
 
 const videoSchema = z.object({
   id: z.string(),
@@ -17,6 +17,26 @@ const videoSchema = z.object({
   estimatedViewsPerDay: z.number().optional(),
 });
 
+const contentGapSchema = z.object({
+  dominant_patterns: z.array(z.string()),
+  recurring_topics: z.array(z.string()),
+  title_patterns: z.array(z.string()),
+  format_patterns: z.array(z.string()),
+  underused_angles: z.array(z.string()),
+  content_gaps: z.array(z.string()),
+  testable_ideas: z.array(z.object({
+    concept: z.string(),
+    why_it_is_distinct: z.string(),
+    reference_signal: z.string(),
+  })),
+  hypotheses_to_validate: z.array(z.string()),
+});
+
+async function runPatternAI(request: AIRequest) {
+  if (process.env.AI_GATEWAY === "omniroute") return runOmniRoute(request);
+  return runOpenRouter(request);
+}
+
 export const analyzeContentGap = createServerFn({ method: "POST" })
   .validator(
     z.object({
@@ -25,46 +45,29 @@ export const analyzeContentGap = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const result = await runOpenRouter({
+    const result = await runPatternAI({
       route: data.route as AIRoute,
+      jsonSchema: {
+        name: "viralflow_content_gap",
+        schema: z.toJSONSchema(contentGapSchema),
+        strict: true,
+      },
       system:
-        "És o Viral Pattern Engine do ViralFlow. Analisa apenas os dados fornecidos. Identifica padrões repetidos e espaços de conteúdo ainda não cobertos pela amostra. Não inventes tendências externas, métricas ou causalidade. Oportunidades são hipóteses, não garantias de desempenho. Devolve JSON válido, sem markdown.",
+        "És o Viral Pattern Engine do ViralFlow. Analisa apenas os dados fornecidos. Identifica padrões repetidos e espaços de conteúdo ainda não cobertos pela amostra. Não inventes tendências externas, métricas ou causalidade. Oportunidades são hipóteses, não garantias de desempenho. Devolve JSON válido sem markdown.",
       prompt: JSON.stringify({
-        task:
-          "Encontrar padrões de conteúdo e content gaps numa coleção de vídeos de referência.",
+        task: "Encontrar padrões de conteúdo e content gaps numa coleção de vídeos de referência.",
         references: data.referenceVideos,
-        output_schema: {
-          dominant_patterns: ["string"],
-          recurring_topics: ["string"],
-          title_patterns: ["string"],
-          format_patterns: ["string"],
-          underused_angles: ["string"],
-          content_gaps: ["string"],
-          testable_ideas: [
-            {
-              concept: "string",
-              why_it_is_distinct: "string",
-              reference_signal: "string",
-            },
-          ],
-          hypotheses_to_validate: ["string"],
-        },
+        rules: [
+          "Cada padrão deve ser sustentado por mais de um sinal quando possível.",
+          "Não confundir ausência na amostra com ausência absoluta no mercado.",
+          "Não transformar visualizações em causalidade.",
+          "Ideias devem explorar lacunas sem copiar títulos ou estruturas literalmente.",
+        ],
       }),
     });
 
     return {
       ...result,
-      parsed: parseJsonObject(result.content),
+      parsed: contentGapSchema.parse(JSON.parse(result.content)),
     };
   });
-
-function parseJsonObject(value: string): Record<string, unknown> | null {
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
