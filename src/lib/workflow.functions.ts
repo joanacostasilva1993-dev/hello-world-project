@@ -98,7 +98,7 @@ export const workflowRunSchema = z.object({
   status: workflowRunStatusSchema,
   currentNodeId: entityIdSchema.optional(),
   nodeRuns: z.array(workflowNodeRunSchema),
-  events: z.array(z.unknown()).max(500),
+  events: z.array(viralFlowEventSchema).max(500),
 });
 
 export type WorkflowRun = z.infer<typeof workflowRunSchema>;
@@ -278,7 +278,7 @@ export function assertQualityGatePassed(
 export function createWorkflowRun(workflowInput: Workflow, projectId: string): WorkflowRun {
   const workflow = validateWorkflow(workflowInput);
   return workflowRunSchema.parse({
-    id: `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `run-${crypto.randomUUID()}`,
     workflowId: workflow.id,
     projectId,
     status: "queued",
