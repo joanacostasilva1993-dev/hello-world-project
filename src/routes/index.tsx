@@ -20,7 +20,8 @@ import {
   X,
   Youtube,
 } from "lucide-react";
-import { useState } from "react";\n\nimport { analyzeContentReference } from "@/lib/ai.functions";\n
+import { useState } from "react";\n\nimport { analyzeChannelIntelligence, analyzeContentReference } from "@/lib/ai.functions";
+import { resolveYouTubeReference } from "@/lib/youtube.functions";\n
 
 import { createEventBus } from "@/lib/eventBus.functions";
 import { runWorkflow } from "@/lib/workflowRuntime.functions";
@@ -57,6 +58,108 @@ function Index() {
   const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
   const [nodeStatuses, setNodeStatuses] = useState<Record<string, string>>({});
   const [eventCount, setEventCount] = useState(0);
+
+  async function runReferenceAnalysis() {
+    setIsRunning(true);
+    setRunStatus("running");
+    setAnalyzed(false);
+    setNodeStatuses({});
+    setEventCount(0);
+
+    const workflow: Workflow = {
+      id: "reference-intelligence-v2",
+      name: "YouTube Reference Intelligence",
+      version: 2,
+      nodes: [
+        { id: "input", type: "project.input", label: "Reference input" },
+        { id: "research", type: "research.run", label: "Resolve + analyze source" },
+        { id: "originality", type: "originality.check", label: "Originality readiness" },
+      ],
+      edges: [
+        { from: "input", to: "research" },
+        { from: "research", to: "originality" },
+      ],
+    };
+
+    const eventBus = createEventBus();
+    const unsubscribe = eventBus.subscribe((event) => {
+      setEventCount(eventBus.history().length);
+      if (event.type === "WORKFLOW_NODE_STARTED" || event.type === "WORKFLOW_NODE_COMPLETED") {
+        const nodeId = typeof event.payload.nodeId === "string" ? event.payload.nodeId : undefined;
+        if (nodeId) setNodeStatuses((current) => ({ ...current, [nodeId]: event.type === "WORKFLOW_NODE_STARTED" ? "running" : "completed" }));
+      }
+    });
+
+    try {
+      const result = await runWorkflow(
+        workflow,
+        "viralflow-command-center",
+        { referenceUrl, mode: analysisMode },
+        {
+          eventBus,
+          handlers: {
+            "project.input": async () => ({
+              output: { referenceUrl, mode: analysisMode },
+              eventType: "PROJECT_CREATED",
+              eventPayload: { referenceUrl, mode: analysisMode },
+            }),
+            "research.run": async () => {
+              const resolved = await resolveYouTubeReference({ data: { mode: analysisMode, url: referenceUrl } });
+              if (resolved.kind === "video") {
+                const analysis = await analyzeContentReference({ data: {
+                  title: resolved.video.title,
+                  author: resolved.video.channelTitle,
+                  url: resolved.sourceUrl,
+                  route: "balanced",
+                  snapshot: {
+                    title: resolved.video.title,
+                    description: resolved.video.description,
+                    channelTitle: resolved.video.channelTitle,
+                    publishedAt: resolved.video.publishedAt,
+                    duration: resolved.video.duration,
+                    tags: resolved.video.tags,
+                    viewCount: resolved.video.viewCount,
+                    likeCount: resolved.video.likeCount,
+                    commentCount: resolved.video.commentCount,
+                  },
+                } });
+                return {
+                  output: { source: resolved, intelligence: analysis.parsed, provider: analysis.provider, model: analysis.model, usage: analysis.usage },
+                  eventType: "RESEARCH_COMPLETED",
+                  eventPayload: { sourceKind: "video", provider: analysis.provider, model: analysis.model, contentDna: analysis.parsed },
+                };
+              }
+
+              const analysis = await analyzeChannelIntelligence({ data: {
+                channel: resolved.channel,
+                videos: resolved.videos,
+                route: "balanced",
+              } });
+              return {
+                output: { source: resolved, intelligence: analysis.parsed, provider: analysis.provider, model: analysis.model, usage: analysis.usage },
+                eventType: "RESEARCH_COMPLETED",
+                eventPayload: { sourceKind: "channel", provider: analysis.provider, model: analysis.model, channelDna: analysis.parsed },
+              };
+            },
+            "originality.check": async (_node, context) => ({
+              output: { status: "ready-for-originality-engine", source: context.outputs.research?.source ? "resolved" : "missing" },
+            }),
+          },
+        },
+      );
+
+      setRunStatus(result.run.status === "completed" ? "completed" : "failed");
+      setAnalyzed(result.run.status === "completed");
+      setEventCount(result.context.events.length);
+    } catch {
+      setRunStatus("failed");
+      setAnalyzed(false);
+    } finally {
+      unsubscribe();
+      setIsRunning(false);
+    }
+  }
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
