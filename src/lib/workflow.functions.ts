@@ -23,6 +23,7 @@ export const workflowNodeKindSchema = z.enum([
 export const workflowNodeTypeSchema = z.enum([
   "project.input",
   "research.run",
+  "pattern.analyze",
   "originality.check",
   "idea.generate",
   "hook.generate",
