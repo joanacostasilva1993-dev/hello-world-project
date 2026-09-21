@@ -1,9 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { getOpenRouterStatus, runOpenRouter, type AIRoute } from "./ai.server";
+import { getOpenRouterStatus, runOmniRoute, runOpenRouter, type AIRequest, type AIRoute } from "./ai.server";
 
 const routeSchema = z.enum(["fast", "balanced", "quality"]);
+async function runPreferredAI(request: AIRequest) {
+  if (process.env.AI_GATEWAY === "omniroute") return runOmniRoute(request);
+  return runOpenRouter(request);
+}
+
 
 const snapshotSchema = z.object({
   title: z.string(),
@@ -76,7 +81,7 @@ export const analyzeContentReference = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const result = await runOpenRouter({
+    const result = await runPreferredAI({
       route: data.route as AIRoute,
       system:
         "És o motor de Content Intelligence do ViralFlow. Analisa referências de conteúdo de forma factual e operacional. Não inventes métricas que não foram fornecidas. Separa sinais observáveis de hipóteses. Devolve JSON válido, sem markdown.",
@@ -137,7 +142,7 @@ export const analyzeChannelIntelligence = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const result = await runOpenRouter({
+    const result = await runPreferredAI({
       route: data.route as AIRoute,
       jsonSchema: { name: "viralflow_channel_dna", schema: z.toJSONSchema(channelDnaSchema), strict: true },
       system:
