@@ -1,15 +1,4 @@
-imp
-
-const channelDnaSchema = z.object({
-  channel_positioning: z.string(),
-  audience_signal: z.string(),
-  content_pillars: z.array(z.string()),
-  title_patterns: z.array(z.string()),
-  publishing_pattern: z.string(),
-  standout_formats: z.array(z.string()),
-  opportunity_signals: z.array(z.string()),
-  hypotheses_to_validate: z.array(z.string()),
-});ort { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { getOpenRouterStatus, runOpenRouter, type AIRoute } from "./ai.server";
@@ -65,6 +54,17 @@ const contentDnaSchema = z.object({
   hypotheses_to_verify: z.array(z.string()),
 });
 
+const channelDnaSchema = z.object({
+  channel_positioning: z.string(),
+  audience_signal: z.string(),
+  content_pillars: z.array(z.string()),
+  title_patterns: z.array(z.string()),
+  publishing_pattern: z.string(),
+  standout_formats: z.array(z.string()),
+  opportunity_signals: z.array(z.string()),
+  hypotheses_to_validate: z.array(z.string()),
+});
+
 export const analyzeContentReference = createServerFn({ method: "POST" })
   .validator(
     z.object({
@@ -80,7 +80,8 @@ export const analyzeContentReference = createServerFn({ method: "POST" })
       route: data.route as AIRoute,
       system:
         "És o motor de Content Intelligence do ViralFlow. Analisa referências de conteúdo de forma factual e operacional. Não inventes métricas que não foram fornecidas. Separa sinais observáveis de hipóteses. Devolve JSON válido, sem markdown.",
-      jsonSchema: { name: "viralflow_content_dna", schema: z.toJSONSchema(contentDnaSchema), strict: true },\n      prompt: JSON.stringify({
+      jsonSchema: { name: "viralflow_content_dna", schema: z.toJSONSchema(contentDnaSchema), strict: true },
+      prompt: JSON.stringify({
         task: "Construir Content DNA operacional a partir de uma referência pública de vídeo.",
         reference: {
           title: data.title,
