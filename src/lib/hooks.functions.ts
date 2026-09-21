@@ -1,61 +1,100 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { runOpenRouter, type AIRoute } from "./ai.server";
 
-const learningContextSchema = z.object({
-  strongestPatterns: z.array(z.string()).max(8).default([]),
-  weakPatterns: z.array(z.string()).max(8).default([]),
-  experimentsToRun: z.array(z.string()).max(8).default([]),
+import { runOmniRoute, runOpenRouter, type AIRequest, type AIRoute } from "./ai.server";
+
+const routeSchema = z.enum(["fast", "balanced", "quality"]);
+
+export const hookMechanismSchema = z.enum([
+  "curiosity_gap",
+  "open_loop",
+  "contrarian",
+  "specificity",
+  "stakes",
+  "pattern_interrupt",
+  "question",
+  "reversal",
+  "mystery",
+  "unexpected_comparison",
+]);
+
+export const hookSchema = z.object({
+  id: z.string().min(1).max(160),
+  text: z.string().min(5).max(500),
+  mechanism: hookMechanismSchema,
+  promise: z.string().min(5).max(300),
+  payoff: z.string().min(5).max(300),
+  opportunityId: z.string().min(1).max(160),
+  evidenceIds: z.array(z.string().min(1).max(160)).max(30),
+  originalityNotes: z.array(z.string().min(1).max(300)).max(8),
+  confidence: z.number().min(0).max(1),
+  testVariantGroup: z.string().min(1).max(80),
 });
 
+export const hookGenerationSchema = z.object({
+  hooks: z.array(hookSchema).min(1).max(10),
+  selectionNotes: z.array(z.string().min(1).max(300)).max(8),
+  hypothesesToTest: z.array(z.string().min(1).max(300)).max(8),
+});
+
+export type ViralFlowHook = z.infer<typeof hookSchema>;
+export type HookGeneration = z.infer<typeof hookGenerationSchema>;
+
+async function runHookAI(request: AIRequest) {
+  if (process.env.AI_GATEWAY === "omniroute") return runOmniRoute(request);
+  return runOpenRouter(request);
+}
+
 export const generateHooks = createServerFn({ method: "POST" })
-  .validator(z.object({
-    concept: z.string().min(2).max(500),
-    angle: z.string().max(500),
-    promise: z.string().max(500),
-    audience: z.string().max(300),
-    format: z.string().max(200),
-    learningContext: learningContextSchema.default({}),
-    route: z.enum(["fast","balanced","quality"]).default("balanced"),
-  }))
+  .validator(
+    z.object({
+      opportunity: z.object({
+        id: z.string().min(1).max(160),
+        gap: z.string().min(1).max(1000),
+        concept: z.string().min(1).max(1000),
+        whyDistinct: z.string().min(1).max(1000),
+        evidenceIds: z.array(z.string().min(1).max(160)).max(30),
+        confidence: z.number().min(0).max(1),
+        hypothesis: z.string().min(1).max(1000),
+        nextTest: z.string().min(1).max(1000),
+      }),
+      count: z.number().int().min(5).max(10).default(8),
+      route: routeSchema.default("balanced"),
+      language: z.string().min(2).max(20).default("pt-PT"),
+    }),
+  )
   .handler(async ({ data }) => {
-    const result = await runOpenRouter({
+    const result = await runHookAI({
       route: data.route as AIRoute,
-      system: "És o Hook Lab do ViralFlow. Cria hooks originais para conteúdo. Usa o Learning Loop para variar e testar mecanismos de abertura com base em sinais observados do próprio canal, sem tratar correlação como causalidade. Não prometas resultados, não uses clickbait enganoso e não copies referências. Cada hook deve criar tensão, curiosidade ou uma promessa concreta que o vídeo consiga cumprir. Devolve JSON válido, sem markdown.",
+      temperature: 0.25,
+      system:
+        "És o Hook Engine do ViralFlow. Gera hooks originais a partir de oportunidades evidenciadas. Prioriza precisão, rastreabilidade e originalidade, não promessas de viralização. Nunca inventes factos, métricas, citações ou evidência. Não copies títulos de referências. Se uma afirmação não estiver sustentada pelos dados fornecidos, transforma-a numa hipótese ou evita-a. Cada hook deve ter mecanismo, promessa e payoff coerentes. Devolve apenas JSON válido conforme o schema.",
+      jsonSchema: {
+        name: "viralflow_hook_generation",
+        schema: z.toJSONSchema(hookGenerationSchema),
+        strict: true,
+      },
       prompt: JSON.stringify({
-        task: "Criar 12 hooks diversificados para uma ideia de conteúdo, usando aprendizagem anterior como contexto experimental.",
-        idea: {
-          concept: data.concept,
-          angle: data.angle,
-          promise: data.promise,
-          audience: data.audience,
-          format: data.format,
-        },
-        learning_loop: data.learningContext,
+        task: "Gerar hooks diversificados para testar uma oportunidade de conteúdo.",
+        language: data.language,
+        count: data.count,
+        opportunity: data.opportunity,
         rules: [
-          "Variar mecanismos narrativos, não apenas palavras.",
-          "Dar prioridade a mecanismos compatíveis com strongestPatterns, mas manter diversidade.",
-          "Usar weakPatterns e experimentsToRun como hipóteses de teste.",
-          "Não afirmar que um hook irá viralizar.",
+          "Não afirmar resultados garantidos.",
+          "Não inventar factos ausentes da oportunidade.",
+          "Não copiar títulos ou frases de referências.",
+          "Variar mecanismos entre curiosity_gap, open_loop, contrarian, specificity, stakes, pattern_interrupt, question, reversal, mystery e unexpected_comparison.",
+          "A promessa deve corresponder ao conteúdo que o futuro roteiro poderá realmente entregar.",
+          "O payoff deve explicar o que o espectador recebe se continuar.",
+          "evidenceIds devem ser apenas IDs fornecidos na oportunidade.",
+          "confidence é confiança na coerência do hook com a evidência, não probabilidade de viralização.",
+          "Agrupar variantes em testVariantGroup para facilitar A/B tests.",
         ],
-        output_schema: {
-          hooks: [{
-            text: "string",
-            mechanism: "string",
-            opening_visual: "string",
-            risk: "low | medium | high",
-            why_it_works: "string"
-          }]
-        }
       }),
     });
-    return { ...result, parsed: parseJsonObject(result.content) };
-  });
 
-function parseJsonObject(value: string): Record<string, unknown> | null {
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed as Record<string, unknown> : null;
-  } catch { return null; }
-}
+    return {
+      ...result,
+      parsed: hookGenerationSchema.parse(JSON.parse(result.content)),
+    };
+  });
