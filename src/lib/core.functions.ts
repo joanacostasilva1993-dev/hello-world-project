@@ -46,6 +46,12 @@ export const eventTypeSchema = z.enum([
   "PUBLISHED",
   "METRICS_RECEIVED",
   "LEARNING_UPDATED",
+  "WORKFLOW_STARTED",
+  "WORKFLOW_NODE_STARTED",
+  "WORKFLOW_NODE_COMPLETED",
+  "WORKFLOW_BLOCKED",
+  "WORKFLOW_FAILED",
+  "WORKFLOW_COMPLETED",
 ]);
 
 export const viralFlowEventSchema = z.object({
@@ -67,7 +73,7 @@ export function createEvent(
   payload: Record<string, unknown> = {},
 ): ViralFlowEvent {
   return viralFlowEventSchema.parse({
-    id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `evt-${crypto.randomUUID()}`,
     type,
     version: 1,
     occurredAt: new Date().toISOString(),
