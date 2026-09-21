@@ -1,4 +1,15 @@
-import { createServerFn } from "@tanstack/react-start";
+imp
+
+const channelDnaSchema = z.object({
+  channel_positioning: z.string(),
+  audience_signal: z.string(),
+  content_pillars: z.array(z.string()),
+  title_patterns: z.array(z.string()),
+  publishing_pattern: z.string(),
+  standout_formats: z.array(z.string()),
+  opportunity_signals: z.array(z.string()),
+  hypotheses_to_validate: z.array(z.string()),
+});ort { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { getOpenRouterStatus, runOpenRouter, type AIRoute } from "./ai.server";
@@ -127,6 +138,7 @@ export const analyzeChannelIntelligence = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const result = await runOpenRouter({
       route: data.route as AIRoute,
+      jsonSchema: { name: "viralflow_channel_dna", schema: z.toJSONSchema(channelDnaSchema), strict: true },
       system:
         "És o Channel Intelligence Engine do ViralFlow. Analisa um canal público do YouTube de forma factual e operacional. Usa apenas os dados fornecidos. Não inventes métricas, não atribuas causalidade e não declares probabilidade de viralização. Distingue padrões observáveis de hipóteses. Devolve JSON válido, sem markdown.",
       prompt: JSON.stringify({
@@ -156,7 +168,7 @@ export const analyzeChannelIntelligence = createServerFn({ method: "POST" })
 
     return {
       ...result,
-      parsed: parseJsonObject(result.content),
+      parsed: channelDnaSchema.parse(JSON.parse(result.content)),
     };
   });
 
