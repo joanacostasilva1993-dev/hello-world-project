@@ -25,6 +25,7 @@ import { useState } from "react";
 import { analyzeChannelIntelligence, analyzeContentReference } from "@/lib/ai.functions";
 import { analyzeContentGap } from "@/lib/patterns.functions";
 import { buildOpportunities } from "@/lib/opportunity.functions";
+import { generateHooks } from "@/lib/hooks.functions";
 import { resolveYouTubeReference } from "@/lib/youtube.functions";
 import { buildReferenceEvidence, appendDecision } from "@/lib/referenceIntelligence.functions";
 import { createEvent } from "@/lib/core.functions";
@@ -78,17 +79,19 @@ function Index() {
     const workflow: Workflow = {
       id: "reference-intelligence-v2",
       name: "YouTube Reference Intelligence",
-      version: 2,
+      version: 1,
       nodes: [
-        { id: "input", type: "project.input", label: "Reference input" },
-        { id: "research", type: "research.run", label: "Resolve + analyze source" },
-        { id: "patterns", type: "pattern.analyze", label: "Pattern + content gap" },
-        { id: "originality", type: "originality.check", label: "Originality readiness" },
+        { id: "input", type: "project.input", kind: "trigger", label: "Reference input", config: {} },
+        { id: "research", type: "research.run", kind: "intelligence", label: "Resolve + analyze source", config: {} },
+        { id: "patterns", type: "pattern.analyze", kind: "intelligence", label: "Pattern + content gap", config: {} },
+        { id: "hooks", type: "hook.generate", kind: "generation", label: "Hook Engine", config: {} },
+        { id: "originality", type: "originality.check", kind: "quality", label: "Originality readiness", config: {} },
       ],
       edges: [
-        { from: "input", to: "research" },
-        { from: "research", to: "patterns" },
-        { from: "patterns", to: "originality" },
+        { id: "edge-input-research", from: "input", to: "research" },
+        { id: "edge-research-patterns", from: "research", to: "patterns" },
+        { id: "edge-patterns-hooks", from: "patterns", to: "hooks" },
+        { id: "edge-hooks-originality", from: "hooks", to: "originality" },
       ],
     };
 
@@ -232,8 +235,41 @@ function Index() {
                 eventPayload: { contentGaps: pattern.parsed.content_gaps, ideaCount: pattern.parsed.testable_ideas.length },
               };
             },
+            "hook.generate": async (_node, context) => {
+              const opportunities = context.outputs.patterns?.opportunities as Array<Record<string, unknown>> | undefined;
+              const opportunity = opportunities?.[0];
+              if (!opportunity) {
+                return {
+                  output: { status: "awaiting-opportunity", reason: "Hook Engine requires at least one evidence-backed opportunity." },
+                  eventType: "HOOK_READY",
+                  eventPayload: { status: "awaiting-opportunity" },
+                };
+              }
+              const hooks = await generateHooks({
+                data: {
+                  opportunity: {
+                    id: String(opportunity.id ?? ""),
+                    gap: String(opportunity.gap ?? ""),
+                    concept: String(opportunity.concept ?? ""),
+                    whyDistinct: String(opportunity.whyDistinct ?? ""),
+                    evidenceIds: Array.isArray(opportunity.evidenceIds) ? opportunity.evidenceIds.map(String) : [],
+                    confidence: typeof opportunity.confidence === "number" ? opportunity.confidence : 0,
+                    hypothesis: String(opportunity.hypothesis ?? ""),
+                    nextTest: String(opportunity.nextTest ?? ""),
+                  },
+                  count: 8,
+                  route: "balanced",
+                  language: "pt-PT",
+                },
+              });
+              return {
+                output: { ...hooks.parsed, provider: hooks.provider, model: hooks.model, usage: hooks.usage },
+                eventType: "HOOK_READY",
+                eventPayload: { hookCount: hooks.parsed.hooks.length, provider: hooks.provider, model: hooks.model },
+              };
+            },
             "originality.check": async (_node, context) => ({
-              output: { status: "ready-for-originality-engine", source: context.outputs.research?.source ? "resolved" : "missing" },
+              output: { status: "ready-for-originality-engine", source: context.outputs.research?.source ? "resolved" : "missing", hooks: context.outputs.hooks?.hooks ?? [] },
             }),
           },
         },
@@ -406,7 +442,7 @@ function Index() {
                     </span>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                    {(["input", "research", "patterns", "originality"] as const).map((nodeId) => (
+                    {(["input", "research", "patterns", "hooks", "originality"] as const).map((nodeId) => (
                       <div key={nodeId} className="rounded-xl border border-border bg-background p-3">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{nodeId}</p>
                         <p className="mt-1 text-xs font-black">{nodeStatuses[nodeId] ?? "queued"}</p>
