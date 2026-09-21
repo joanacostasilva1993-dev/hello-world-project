@@ -22,6 +22,7 @@ export const workflowNodeExecutionResultSchema = z.object({
   eventType: z
     .enum([
       "PROJECT_CREATED",
+      "RESEARCH_COMPLETED",
       "IDEA_CREATED",
       "HOOK_READY",
       "SCRIPT_READY",
