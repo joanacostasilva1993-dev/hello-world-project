@@ -22,6 +22,10 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { createEventBus } from "@/lib/eventBus.functions";
+import { runWorkflow } from "@/lib/workflowRuntime.functions";
+import type { Workflow, WorkflowNode } from "@/lib/workflow.functions";
+
 export const Route = createFileRoute("/")({
   component: Index,
 });
@@ -49,6 +53,10 @@ function Index() {
   const [referenceUrl, setReferenceUrl] = useState("");
   const [analysisMode, setAnalysisMode] = useState<"video" | "channel">("video");
   const [analyzed, setAnalyzed] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
+  const [nodeStatuses, setNodeStatuses] = useState<Record<string, string>>({});
+  const [eventCount, setEventCount] = useState(0);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -183,11 +191,35 @@ function Index() {
                   <Youtube className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <input value={referenceUrl} onChange={(e) => setReferenceUrl(e.target.value)} placeholder={analysisMode === "video" ? "Cole a URL de um vídeo do YouTube..." : "Cole a URL de um canal do YouTube..."} className="h-11 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </div>
-                <button onClick={() => setAnalyzed(Boolean(referenceUrl.trim()))} disabled={!referenceUrl.trim()} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
+                <button onClick={runReferenceAnalysis} disabled={!referenceUrl.trim() || isRunning} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
                   <BrainCircuit className="size-4" />
                   Analisar referência
                 </button>
               </div>
+              {(isRunning || runStatus !== "idle") && (
+                <div className="mt-5 rounded-2xl border border-border bg-muted/20 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-primary">Workflow Runtime</p>
+                      <p className="mt-1 text-sm font-bold">
+                        {runStatus === "running" ? "Pipeline em execução" : runStatus === "completed" ? "Pipeline concluído" : "Pipeline terminou com falha"}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      {eventCount} eventos
+                    </span>
+                  </div>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    {(["input", "research", "originality"] as const).map((nodeId) => (
+                      <div key={nodeId} className="rounded-xl border border-border bg-background p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{nodeId}</p>
+                        <p className="mt-1 text-xs font-black">{nodeStatuses[nodeId] ?? "queued"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {analyzed ? (
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <InsightCard label="Hook" value="Detectado" detail="Promessa / curiosidade" />
@@ -205,9 +237,9 @@ function Index() {
             </section>
 
             <section className="grid gap-4 md:grid-cols-3">
-              <MetricCard icon={BrainCircuit} label="Intelligence" value="Ready" detail="Motor de análise preparado" />
-              <MetricCard icon={Youtube} label="References" value="0" detail="Adicione o primeiro vídeo ou canal" />
-              <MetricCard icon={Lightbulb} label="Ideas" value="0" detail="Nenhuma ideia gerada ainda" />
+              <MetricCard icon={BrainCircuit} label="Intelligence" value={runStatus === "completed" ? "Executed" : "Ready"} detail="Workflow Runtime conectado" />
+              <MetricCard icon={Youtube} label="References" value={analyzed ? "1" : "0"} detail={analyzed ? "Referência processada" : "Adicione o primeiro vídeo ou canal"} />
+              <MetricCard icon={Lightbulb} label="Ideas" value="0" detail="Próxima etapa: oportunidades" />
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
