@@ -24,6 +24,7 @@ import { useState } from "react";
 
 import { analyzeChannelIntelligence, analyzeContentReference } from "@/lib/ai.functions";
 import { analyzeContentGap } from "@/lib/patterns.functions";
+import { buildOpportunities } from "@/lib/opportunity.functions";
 import { resolveYouTubeReference } from "@/lib/youtube.functions";
 import { buildReferenceEvidence, appendDecision } from "@/lib/referenceIntelligence.functions";
 import { createEvent } from "@/lib/core.functions";
@@ -210,14 +211,23 @@ function Index() {
                   route: "balanced",
                 },
               });
+              const referenceIntelligence = context.outputs.research?.referenceIntelligence as
+                | { evidence: Array<{ id: string }> }
+                | undefined;
+              const opportunities = buildOpportunities({
+                gaps: pattern.parsed.content_gaps,
+                ideas: pattern.parsed.testable_ideas,
+                evidenceIds: referenceIntelligence?.evidence.map((item) => item.id) ?? [],
+              });
               eventBus.publish(createEvent("PATTERN_ANALYSIS_COMPLETED", "viralflow-command-center", "pattern.analyze", {
                 contentGaps: pattern.parsed.content_gaps,
+                opportunityCount: opportunities.length,
                 ideaCount: pattern.parsed.testable_ideas.length,
                 provider: pattern.provider,
                 model: pattern.model,
               }));
               return {
-                output: { pattern: pattern.parsed, provider: pattern.provider, model: pattern.model, usage: pattern.usage },
+                output: { pattern: pattern.parsed, opportunities, provider: pattern.provider, model: pattern.model, usage: pattern.usage },
                 eventType: "PATTERN_ANALYSIS_COMPLETED",
                 eventPayload: { contentGaps: pattern.parsed.content_gaps, ideaCount: pattern.parsed.testable_ideas.length },
               };
