@@ -166,7 +166,8 @@ export async function runWorkflow(
       guardProtectedNode(node, passedGateTypes);
 
       if (options.providerResolver) {
-        nodeRun.providerDecision = options.providerResolver(node);
+        const providerDecision = options.providerResolver(node);
+        if (providerDecision) nodeRun.providerDecision = providerDecision;
       }
 
       const handler =
