@@ -46,8 +46,29 @@ export type CaptionOptions = {
   maxWordsPerCaption?: number;
 };
 
+export type ScriptSceneTiming = {
+  sceneId: string;
+  narration: string;
+};
+
+export type AlignedScene = ScriptSceneTiming & {
+  startSeconds: number;
+  endSeconds: number;
+  matchedWordCount: number;
+  alignmentConfidence: number;
+};
+
 function cleanWord(text: string) {
-  return text.replace(/\\s+/g, " ").trim();
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function normalizeForMatch(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 }
 
 function formatSrtTime(seconds: number) {
@@ -97,10 +118,9 @@ export function buildCaptionsFromWords(
     throw new Error("Opções de legendas inválidas.");
   }
 
-  const words = wordsInput.map((word) => ({
-    ...word,
-    text: cleanWord(word.text),
-  })).filter((word) => word.text.length > 0);
+  const words = wordsInput
+    .map((word) => ({ ...word, text: cleanWord(word.text) }))
+    .filter((word) => word.text.length > 0);
 
   validateAudioWords(words, Number.POSITIVE_INFINITY);
 
@@ -164,6 +184,73 @@ export function captionsToSrt(captionsInput: AudioCaption[]) {
         `${index + 1}\n${formatSrtTime(caption.startSeconds)} --> ${formatSrtTime(caption.endSeconds)}\n${caption.text}\n`,
     )
     .join("\n");
+}
+
+export function alignScriptScenesToAudio(
+  scenes: ScriptSceneTiming[],
+  wordsInput: AudioWord[],
+): AlignedScene[] {
+  const words = audioWordSchema.array().parse(wordsInput);
+  validateAudioWords(words, Number.POSITIVE_INFINITY);
+
+  let cursor = 0;
+
+  return scenes.map((scene) => {
+    const target = normalizeForMatch(scene.narration);
+    const targetWords = target ? target.split(" ") : [];
+    if (!targetWords.length) {
+      return {
+        ...scene,
+        startSeconds: cursor,
+        endSeconds: cursor,
+        matchedWordCount: 0,
+        alignmentConfidence: 0,
+      };
+    }
+
+    const normalizedAudio = words.map((word) => normalizeForMatch(word.text));
+    let bestStart = -1;
+    let bestMatched = 0;
+
+    for (let start = cursor; start < words.length; start += 1) {
+      let matched = 0;
+      while (
+        matched < targetWords.length &&
+        start + matched < words.length &&
+        normalizedAudio[start + matched] === targetWords[matched]
+      ) {
+        matched += 1;
+      }
+      if (matched > bestMatched) {
+        bestMatched = matched;
+        bestStart = start;
+      }
+      if (bestMatched === targetWords.length) break;
+    }
+
+    if (bestStart === -1) {
+      return {
+        ...scene,
+        startSeconds: cursor,
+        endSeconds: cursor,
+        matchedWordCount: 0,
+        alignmentConfidence: 0,
+      };
+    }
+
+    const endIndex = bestStart + bestMatched - 1;
+    const startSeconds = words[bestStart].startSeconds;
+    const endSeconds = words[endIndex].endSeconds;
+    cursor = endIndex + 1;
+
+    return {
+      ...scene,
+      startSeconds,
+      endSeconds,
+      matchedWordCount: bestMatched,
+      alignmentConfidence: bestMatched / targetWords.length,
+    };
+  });
 }
 
 export function buildAudioTimeline(input: {
