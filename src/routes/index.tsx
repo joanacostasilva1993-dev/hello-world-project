@@ -25,6 +25,7 @@ import { useState } from "react";
 import { analyzeChannelIntelligence, analyzeContentReference } from "@/lib/ai.functions";
 import { resolveYouTubeReference } from "@/lib/youtube.functions";
 import { buildReferenceEvidence, appendDecision } from "@/lib/referenceIntelligence.functions";
+import { createEvent } from "@/lib/core.functions";
 
 
 import { createEventBus } from "@/lib/eventBus.functions";
