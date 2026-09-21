@@ -24,7 +24,7 @@ import { useState } from "react";
 
 import { createEventBus } from "@/lib/eventBus.functions";
 import { runWorkflow } from "@/lib/workflowRuntime.functions";
-import type { Workflow, WorkflowNode } from "@/lib/workflow.functions";
+import type { Workflow } from "@/lib/workflow.functions";
 
 export const Route = createFileRoute("/")({
   component: Index,
