@@ -39,6 +39,21 @@ export const getAIProviderStatus = createServerFn({ method: "GET" }).handler(() 
   return getOpenRouterStatus();
 });
 
+const contentDnaSchema = z.object({
+  hook: z.string(),
+  promise: z.string(),
+  topic: z.string(),
+  audience_signal: z.string(),
+  narrative_pattern: z.string(),
+  retention_mechanics: z.array(z.string()),
+  packaging_signals: z.array(z.string()),
+  visual_signals: z.array(z.string()),
+  content_angles: z.array(z.string()),
+  opportunities: z.array(z.string()),
+  hook_variants: z.array(z.string()),
+  hypotheses_to_verify: z.array(z.string()),
+});
+
 export const analyzeContentReference = createServerFn({ method: "POST" })
   .validator(
     z.object({
@@ -54,7 +69,7 @@ export const analyzeContentReference = createServerFn({ method: "POST" })
       route: data.route as AIRoute,
       system:
         "És o motor de Content Intelligence do ViralFlow. Analisa referências de conteúdo de forma factual e operacional. Não inventes métricas que não foram fornecidas. Separa sinais observáveis de hipóteses. Devolve JSON válido, sem markdown.",
-      prompt: JSON.stringify({
+      jsonSchema: { name: "viralflow_content_dna", schema: z.toJSONSchema(contentDnaSchema), strict: true },\n      prompt: JSON.stringify({
         task: "Construir Content DNA operacional a partir de uma referência pública de vídeo.",
         reference: {
           title: data.title,
@@ -87,7 +102,7 @@ export const analyzeContentReference = createServerFn({ method: "POST" })
 
     return {
       ...result,
-      parsed: parseJsonObject(result.content),
+      parsed: contentDnaSchema.parse(JSON.parse(result.content)),
     };
   });
 
