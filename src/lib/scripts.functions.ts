@@ -46,7 +46,7 @@ const inputSchema = z.object({
     strongestPatterns: z.array(z.string()).max(8).default([]),
     weakPatterns: z.array(z.string()).max(8).default([]),
     experimentsToRun: z.array(z.string()).max(8).default([]),
-  }).default({}),
+  }).default({ strongestPatterns: [], weakPatterns: [], experimentsToRun: [] }),
   route: z.enum(["fast", "balanced", "quality"]).default("balanced"),
 });
 
