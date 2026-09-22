@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 import { runOpenRouter, type AIRoute } from "./ai.server";
 
@@ -12,6 +12,13 @@ const ideaSchema = z.object({
   hook: z.string(),
   differentiation: z.string(),
   validation: z.string(),
+});
+
+// Envelope que a IA deve devolver. Antes, `ideaSchema` existia mas nunca era
+// usado para validar nada — a resposta era só JSON.parse "às cegas". Isto
+// obriga o modelo, via response_format da OpenRouter, a cumprir a estrutura.
+const ideasResponseSchema = z.object({
+  ideas: z.array(ideaSchema).min(1).max(8),
 });
 
 const learningContextSchema = z.object({
@@ -28,13 +35,14 @@ export const generateContentIdeas = createServerFn({ method: "POST" })
       contentGaps: z.array(z.string()).min(1).max(12),
       dominantPatterns: z.array(z.string()).max(12).default([]),
       recurringTopics: z.array(z.string()).max(12).default([]),
-      learningContext: learningContextSchema.default({}),
+      learningContext: learningContextSchema.default({ strongestPatterns: [], weakPatterns: [], experimentsToRun: [] }),
       route: z.enum(["fast", "balanced", "quality"]).default("balanced"),
     }),
   )
   .handler(async ({ data }) => {
     const result = await runOpenRouter({
       route: data.route as AIRoute,
+      jsonSchema: { name: "viralflow_content_ideas", schema: z.toJSONSchema(ideasResponseSchema), strict: true },
       system:
         "És o Idea Engine do ViralFlow. Transforma sinais de inteligência de conteúdo em conceitos originais que um criador consiga produzir. Usa o Learning Loop como feedback do próprio canal: reforça padrões observados sem tratá-los como causalidade garantida e transforma experiências anteriores em hipóteses de novos testes. Não copies títulos, hooks ou conceitos das referências. Não inventes tendências externas, métricas ou garantias de desempenho. Devolve JSON válido, sem markdown.",
       prompt: JSON.stringify({
@@ -77,16 +85,15 @@ export const generateContentIdeas = createServerFn({ method: "POST" })
 
     return {
       ...result,
-      parsed: parseJsonObject(result.content),
+      parsed: parseIdeasResponse(result.content),
     };
   });
 
-function parseJsonObject(value: string): Record<string, unknown> | null {
+function parseIdeasResponse(value: string): Record<string, unknown> | null {
   try {
     const parsed: unknown = JSON.parse(value);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null;
+    const validated = ideasResponseSchema.safeParse(parsed);
+    return validated.success ? (validated.data as unknown as Record<string, unknown>) : null;
   } catch {
     return null;
   }
