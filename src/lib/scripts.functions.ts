@@ -114,7 +114,7 @@ export const generateScript = createServerFn({ method: "POST" })
         targetSeconds: duration.targetSeconds,
         targetWords: duration.targetWords,
         actualNarrationWords: parsed.scenes.reduce(
-          (total, scene) => total + scene.narration.trim().split(/\s+/).filter(Boolean).length,
+          (total, scene) => total + scene.narration.trim().split(/\\s+/).filter(Boolean).length,
           0,
         ),
         toleranceSeconds: duration.toleranceSeconds,
