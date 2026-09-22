@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { entityIdSchema, type ViralFlowEvent } from "./core.functions";
+import { entityIdSchema, viralFlowEventSchema, type ViralFlowEvent } from "./core.functions";
 import {
   providerRouterDecisionSchema,
   resolveProvider,
@@ -170,7 +170,7 @@ export function validateWorkflow(workflowInput: Workflow): Workflow {
     throw new Error("Workflow com vários nodes precisa de pelo menos uma ligação.");
   }
   if (!workflow.nodes.some((node) => (incoming.get(node.id) ?? 0) === 0)) {
-    throw new Error("Workflow inválido: não existe node de entrada.");
+    throw new Error("Workflow inválido: ciclo detectado no grafo (nenhum node de entrada disponível).");
   }
 
   return workflow;
