@@ -49,6 +49,15 @@ function ScriptsPage() {
 
   useEffect(() => {
     try {
+      const selectedHookRaw = localStorage.getItem("viralflow.selectedHook");
+      if (selectedHookRaw) {
+        const selectedHook = JSON.parse(selectedHookRaw) as { hook?: { text?: string }; idea?: SavedIdea };
+        if (selectedHook.idea) {
+          setSelected(selectedHook.idea);
+          setHook(String(selectedHook.hook?.text ?? ""));
+        }
+      }
+
       const savedIdeas = localStorage.getItem("viralflow.savedIdeas");
       if (savedIdeas) {
         const parsed = JSON.parse(savedIdeas);
@@ -107,8 +116,9 @@ function ScriptsPage() {
       setScript(result.parsed);
       localStorage.setItem(
         "viralflow.lastScript",
-        JSON.stringify({ ...result.parsed, format: selected.format }),
+        JSON.stringify({ ...result.parsed, format: selected.format, sourceHook: hook.trim(), sourceIdea: selected }),
       );
+      localStorage.removeItem("viralflow.selectedHook");
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Não foi possível criar o roteiro.",
@@ -126,10 +136,12 @@ function ScriptsPage() {
               Boolean(item) && typeof item === "object",
           )
           .map((item) => ({
-            time: String(item.time ?? "—"),
+            time: item.startSeconds !== undefined && item.endSeconds !== undefined
+              ? `${String(item.startSeconds)}s → ${String(item.endSeconds)}s`
+              : String(item.time ?? "—"),
             visual: String(item.visual ?? "—"),
             narration: String(item.narration ?? "—"),
-            on_screen_text: String(item.on_screen_text ?? "—"),
+            on_screen_text: String(item.onScreenText ?? item.on_screen_text ?? "—"),
             sfx: String(item.sfx ?? "—"),
             transition: String(item.transition ?? "—"),
           }))
