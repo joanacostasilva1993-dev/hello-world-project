@@ -54,7 +54,7 @@ function StoryboardPage(){
     scene:String(x.scene??"—"),time:String(x.time??"—"),shot_type:String(x.shot_type??"—"),camera:String(x.camera??"—"),
     composition:String(x.composition??"—"),action:String(x.action??"—"),continuity:String(x.continuity??"—"),
     image_prompt:String(x.image_prompt??"—"),video_prompt:String(x.video_prompt??"—"),asset_type:String(x.asset_type??"mixed")
-   })));
+   }));
    setShots(nextShots);
    localStorage.setItem("viralflow.storyboard", JSON.stringify(nextShots));
   }catch(e){setMessage(e instanceof Error?e.message:"Não foi possível gerar o storyboard.");}
@@ -139,7 +139,7 @@ function StoryboardPage(){
        <p className="text-[10px] text-muted-foreground">Query: <span className="font-semibold text-foreground">{media[i].query}</span></p>
        {media[i].assets.length?<div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{media[i].assets.map(asset=><button key={asset.provider+"-"+asset.id} onClick={()=>selectMedia(i,asset)} className="group overflow-hidden rounded-2xl border border-border bg-background text-left transition hover:border-primary/50">
         <div className="relative aspect-video overflow-hidden bg-muted"><img src={asset.thumbnailUrl||asset.url} alt={asset.title} className="h-full w-full object-cover transition group-hover:scale-105"/><span className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[9px] font-black uppercase">{asset.provider}</span>{asset.recommended&&<span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-1 text-[9px] font-black text-primary-foreground">RECOMENDADO</span>}{selected[i]?.id===asset.id&&<span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-4"/></span>}</div>
-        <div className="p-3"><div className="flex items-center justify-between gap-2"><p className="line-clamp-2 text-xs font-bold">{asset.title}</p>{typeof asset.matchScore==="number"&&<span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black text-primary">{asset.matchScore}% match</span>}</div><p className="mt-1 text-[10px] text-muted-foreground">{asset.width&&asset.height?asset.width+" × "+asset.height:""} {asset.author?"· "+asset.author:""}</p>{asset.matchReasons?.length&&<p className="mt-2 line-clamp-2 text-[9px] leading-4 text-muted-foreground">{asset.matchReasons.join(" · ")}</p>{asset.sourceUrl&&<span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-primary"><ExternalLink className="size-3"/> Origem</span>}</div>
+        <div className="p-3"><div className="flex items-center justify-between gap-2"><p className="line-clamp-2 text-xs font-bold">{asset.title}</p>{typeof asset.matchScore==="number"&&<span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black text-primary">{asset.matchScore}% match</span>}</div><p className="mt-1 text-[10px] text-muted-foreground">{asset.width&&asset.height?asset.width+" × "+asset.height:""} {asset.author?"· "+asset.author:""}</p>{asset.matchReasons?.length&&<p className="mt-2 line-clamp-2 text-[9px] leading-4 text-muted-foreground">{asset.matchReasons.join(" · ")}</p>}{asset.sourceUrl&&<span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-primary"><ExternalLink className="size-3"/> Origem</span>}</div>
        </button>)}</div>:<div className="mt-3 rounded-xl border border-dashed p-4 text-xs text-muted-foreground">Não foram encontrados resultados para esta pesquisa.</div>}
       </div>}
      </div>
@@ -150,4 +150,5 @@ function StoryboardPage(){
 }
 
 function Info({label,value}:{label:string;value:string}){return <div className="rounded-2xl bg-background p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 text-xs leading-5">{value}</p></div>}
+
 
