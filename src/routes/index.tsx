@@ -29,6 +29,7 @@ import { generateHooks } from "@/lib/hooks.functions";
 import { resolveYouTubeReference } from "@/lib/youtube.functions";
 import { buildReferenceEvidence, appendDecision } from "@/lib/referenceIntelligence.functions";
 import { createEvent } from "@/lib/core.functions";
+import { persistEvent } from "@/lib/projectStore.functions";
 
 
 import { createEventBus } from "@/lib/eventBus.functions";
@@ -102,6 +103,7 @@ function Index() {
     const eventBus = createEventBus();
     const unsubscribe = eventBus.subscribe((event) => {
       setEventCount(eventBus.history().length);
+      persistEvent(event);
       if (event.type === "WORKFLOW_NODE_STARTED" || event.type === "WORKFLOW_NODE_COMPLETED") {
         const nodeId = typeof event.payload.nodeId === "string" ? event.payload.nodeId : undefined;
         if (nodeId) setNodeStatuses((current) => ({ ...current, [nodeId]: event.type === "WORKFLOW_NODE_STARTED" ? "running" : "completed" }));
