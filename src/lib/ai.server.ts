@@ -210,7 +210,7 @@ export async function runOmniRoute(request: AIRequest): Promise<AIResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000);
   try {
-    const response = await fetch(OMNIROUTE_URL.replace(/\\/$/, "") + "/chat/completions", {
+    const response = await fetch(OMNIROUTE_URL.replace(/\/$/, "") + "/chat/completions", {
       method: "POST",
       headers: {
         ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
