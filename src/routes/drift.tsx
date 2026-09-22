@@ -151,7 +151,7 @@ function DriftBridgePage() {
       {job && <div className="mt-4 rounded-2xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><p className="text-xs font-black">Local Bridge · {job.status}</p><p className="mt-1 text-[10px] text-muted-foreground">{job.currentStep} / {job.totalSteps} passos</p></div>
-          <div className="h-2 w-48 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary transition-all" style={{ width: \`${job.totalSteps ? Math.round(job.currentStep / job.totalSteps * 100) : 0}%\` }} /></div>
+          <div className="h-2 w-48 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary transition-all" style={{ width: `${job.totalSteps ? Math.round(job.currentStep / job.totalSteps * 100) : 0}%` }} /></div>
         </div>
       </div>}
 
